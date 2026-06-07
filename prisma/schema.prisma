@@ -8,6 +8,148 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Institute {
+  id        String    @id @default(uuid())
+  name      String
+  logo      String?
+  status    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  courses   Course[]
+  payments  Payment[]
+  users     User[]
+
+  @@index([deletedAt])
+}
+
+model User {
+  id            String        @id @default(uuid())
+  name          String
+  email         String        @unique
+  password      String
+  role          Role
+  instituteId   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+  certificates  Certificate[]
+  coursesTaught Course[]      @relation("FacultyCourses")
+  enrollments   Enrollment[]
+  institute     Institute?    @relation(fields: [instituteId], references: [id])
+
+  @@index([role])
+  @@index([deletedAt])
+}
+
+model Course {
+  id           String        @id @default(uuid())
+  title        String
+  description  String?
+  courseCode   String        @unique
+  instituteId  String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+  facultyId    String?
+  assignments  Assignment[]
+  batches      Batch[]
+  certificates Certificate[]
+  faculty      User?         @relation("FacultyCourses", fields: [facultyId], references: [id])
+  institute    Institute     @relation(fields: [instituteId], references: [id])
+  tests        Test[]
+
+  @@index([instituteId])
+  @@index([facultyId])
+  @@index([deletedAt])
+}
+
+model Batch {
+  id          String       @id @default(uuid())
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  courseId    String
+  createdAt   DateTime     @default(now())
+  deletedAt   DateTime?
+  course      Course       @relation(fields: [courseId], references: [id])
+  enrollments Enrollment[]
+
+  @@index([courseId])
+  @@index([deletedAt])
+}
+
+model Enrollment {
+  id         String   @id @default(uuid())
+  studentId  String
+  batchId    String
+  enrolledAt DateTime @default(now())
+  batch      Batch    @relation(fields: [batchId], references: [id])
+  student    User     @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, batchId])
+  @@index([studentId])
+  @@index([batchId])
+}
+
+model Assignment {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  dueDate     DateTime
+  courseId    String
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  course      Course    @relation(fields: [courseId], references: [id])
+
+  @@index([courseId])
+  @@index([deletedAt])
+}
+
+model Test {
+  id         String    @id @default(uuid())
+  title      String
+  totalMarks Int
+  duration   Int
+  courseId   String
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime?
+  course     Course    @relation(fields: [courseId], references: [id])
+
+  @@index([courseId])
+  @@index([deletedAt])
+}
+
+model Certificate {
+  id            String            @id @default(uuid())
+  certificateNo String            @unique
+  studentId     String
+  courseId      String
+  qrCodeUrl     String?
+  status        CertificateStatus @default(ACTIVE)
+  issueDate     DateTime
+  createdAt     DateTime          @default(now())
+  deletedAt     DateTime?
+  course        Course            @relation(fields: [courseId], references: [id])
+  student       User              @relation(fields: [studentId], references: [id])
+
+  @@index([studentId])
+  @@index([courseId])
+  @@index([deletedAt])
+}
+
+model Payment {
+  id          String    @id @default(uuid())
+  amount      Float
+  instituteId String
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  institute   Institute @relation(fields: [instituteId], references: [id])
+
+  @@index([instituteId])
+  @@index([deletedAt])
+}
+
 enum Role {
   SUPER_ADMIN
   ADMIN
@@ -18,183 +160,4 @@ enum Role {
 enum CertificateStatus {
   ACTIVE
   REVOKED
-}
-
-model Institute {
-  id     String  @id @default(uuid())
-  name   String
-  logo   String?
-  status Boolean @default(true)
-
-  users    User[]
-  courses  Course[]
-  payments Payment[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@index([deletedAt])
-}
-
-model User {
-  id       String @id @default(uuid())
-  name     String
-  email    String @unique
-  password String
-
-  role Role
-
-  instituteId String?
-  institute   Institute? @relation(fields: [instituteId], references: [id])
-
-  enrollments  Enrollment[]
-  certificates Certificate[]
-
-  // Faculty → Courses
-  coursesTaught Course[] @relation("FacultyCourses")
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@index([role])
-  @@index([deletedAt])
-}
-
-model Course {
-  id          String  @id @default(uuid())
-  title       String
-  description String?
-  courseCode  String  @unique
-
-  instituteId String
-  institute   Institute @relation(fields: [instituteId], references: [id])
-
-  // Faculty ownership
-  facultyId String?
-  faculty   User?   @relation("FacultyCourses", fields: [facultyId], references: [id])
-
-  batches      Batch[]
-  tests        Test[]
-  assignments  Assignment[]
-  certificates Certificate[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@index([instituteId])
-  @@index([facultyId])
-  @@index([deletedAt])
-}
-
-model Batch {
-  id   String @id @default(uuid())
-  name String
-
-  startDate DateTime
-  endDate   DateTime
-
-  courseId String
-  course   Course @relation(fields: [courseId], references: [id])
-
-  enrollments Enrollment[]
-
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-
-  @@index([courseId])
-  @@index([deletedAt])
-}
-
-model Enrollment {
-  id String @id @default(uuid())
-
-  studentId String
-  student   User   @relation(fields: [studentId], references: [id])
-
-  batchId String
-  batch   Batch  @relation(fields: [batchId], references: [id])
-
-  enrolledAt DateTime @default(now())
-
-  @@unique([studentId, batchId])
-  @@index([studentId])
-  @@index([batchId])
-}
-
-model Assignment {
-  id          String  @id @default(uuid())
-  title       String
-  description String?
-
-  dueDate DateTime
-
-  courseId String
-  course   Course @relation(fields: [courseId], references: [id])
-
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-
-  @@index([courseId])
-  @@index([deletedAt])
-}
-
-model Test {
-  id String @id @default(uuid())
-
-  title String
-
-  totalMarks Int
-  duration   Int
-
-  courseId String
-  course   Course @relation(fields: [courseId], references: [id])
-
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-
-  @@index([courseId])
-  @@index([deletedAt])
-}
-
-model Certificate {
-  id String @id @default(uuid())
-
-  certificateNo String @unique
-
-  studentId String
-  student   User   @relation(fields: [studentId], references: [id])
-
-  courseId String
-  course   Course @relation(fields: [courseId], references: [id])
-
-  qrCodeUrl String?
-
-  status CertificateStatus @default(ACTIVE)
-
-  issueDate DateTime
-
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-
-  @@index([studentId])
-  @@index([courseId])
-  @@index([deletedAt])
-}
-
-model Payment {
-  id String @id @default(uuid())
-
-  amount Float
-
-  instituteId String
-  institute   Institute @relation(fields: [instituteId], references: [id])
-
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-
-  @@index([instituteId])
-  @@index([deletedAt])
 }
