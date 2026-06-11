@@ -58,6 +58,8 @@ model Course {
   faculty      User?         @relation("FacultyCourses", fields: [facultyId], references: [id])
   institute    Institute     @relation(fields: [instituteId], references: [id])
   tests        Test[]
+  videos       Video[]
+  materials    Material[]
 
   @@index([instituteId])
   @@index([facultyId])
@@ -90,6 +92,40 @@ model Enrollment {
   @@unique([studentId, batchId])
   @@index([studentId])
   @@index([batchId])
+}
+
+model Video {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  videoUrl    String
+  duration    Int?
+  sortOrder   Int       @default(0)
+  courseId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  course      Course    @relation(fields: [courseId], references: [id])
+
+  @@index([courseId])
+  @@index([deletedAt])
+}
+
+model Material {
+  id           String       @id @default(uuid())
+  title        String
+  description  String?
+  fileUrl      String
+  materialType MaterialType @default(PDF)
+  sortOrder    Int          @default(0)
+  courseId     String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
+  course       Course       @relation(fields: [courseId], references: [id])
+
+  @@index([courseId])
+  @@index([deletedAt])
 }
 
 model Assignment {
@@ -160,4 +196,14 @@ enum Role {
 enum CertificateStatus {
   ACTIVE
   REVOKED
+}
+
+enum MaterialType {
+  PDF
+  DOC
+  DOCX
+  PPT
+  PPTX
+  XLSX
+  OTHER
 }

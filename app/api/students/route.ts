@@ -26,7 +26,19 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const hashedPassword = await bcrypt.hash(body.password, 10);
+    const institute = await prisma.institute.findFirst();
+
+    if (!institute) {
+      return NextResponse.json(
+        { message: "Institute not found" },
+        { status: 404 }
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(
+      "123456",
+      10
+    );
 
     const student = await prisma.user.create({
       data: {
@@ -34,7 +46,7 @@ export async function POST(req: NextRequest) {
         email: body.email,
         password: hashedPassword,
         role: "STUDENT",
-        instituteId: body.instituteId,
+        instituteId: institute.id,
       },
     });
 
