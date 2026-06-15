@@ -6,6 +6,7 @@ import Link from "next/link";
 import api from "@/lib/axios";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
+import VideoUpload from "@/components/videos/VideoUpload";
 
 // ─── Type Definitions ───────────────────────────────────────────────────────
 
@@ -23,8 +24,13 @@ interface Video {
   title: string;
   description: string | null;
   videoUrl: string;
+  storagePath?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
   duration: number | null;
   sortOrder: number;
+  published?: boolean;
 }
 
 interface Material {
@@ -114,6 +120,11 @@ export default function CourseDetailPage() {
   const [videoDuration, setVideoDuration] = useState("");
   const [videoSortOrder, setVideoSortOrder] = useState("0");
   const [videoSaving, setVideoSaving] = useState(false);
+  const [videoStoragePath, setVideoStoragePath] = useState("");
+  const [videoFileName, setVideoFileName] = useState("");
+  const [videoFileSize, setVideoFileSize] = useState<number | null>(null);
+  const [videoMimeType, setVideoMimeType] = useState("");
+  const [videoPublished, setVideoPublished] = useState(true);
 
   // ── Materials State ───────────────────────────────────────────────────────
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -162,13 +173,6 @@ export default function CourseDetailPage() {
     fetchCourse();
   }, [courseId]);
 
-  // Fetch tab data when tab changes
-  useEffect(() => {
-    if (activeTab === "videos") fetchVideos();
-    if (activeTab === "materials") fetchMaterials();
-    if (activeTab === "students") fetchEnrollments();
-  }, [activeTab]);
-
   const fetchVideos = async () => {
     try {
       setVideosLoading(true);
@@ -213,6 +217,17 @@ export default function CourseDetailPage() {
       setStudentsLoading(false);
     }
   };
+
+  // Fetch tab data when tab changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeTab === "videos") fetchVideos();
+      if (activeTab === "materials") fetchMaterials();
+      if (activeTab === "students") fetchEnrollments();
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // ─── Course Info Handlers ───────────────────────────────────────────────────
 
@@ -263,6 +278,11 @@ export default function CourseDetailPage() {
     setVideoUrl("");
     setVideoDuration("");
     setVideoSortOrder("0");
+    setVideoStoragePath("");
+    setVideoFileName("");
+    setVideoFileSize(null);
+    setVideoMimeType("");
+    setVideoPublished(true);
     setShowVideoForm(false);
   };
 
@@ -275,6 +295,11 @@ export default function CourseDetailPage() {
       video.duration ? String(video.duration) : ""
     );
     setVideoSortOrder(String(video.sortOrder));
+    setVideoStoragePath(video.storagePath || "");
+    setVideoFileName(video.fileName || "");
+    setVideoFileSize(video.fileSize || null);
+    setVideoMimeType(video.mimeType || "");
+    setVideoPublished(video.published !== undefined ? video.published : true);
     setShowVideoForm(true);
   };
 
@@ -290,15 +315,20 @@ export default function CourseDetailPage() {
         title: videoTitle,
         description: videoDescription || null,
         videoUrl,
+        storagePath: videoStoragePath || null,
+        fileName: videoFileName || null,
+        fileSize: videoFileSize ? Number(videoFileSize) : null,
+        mimeType: videoMimeType || null,
         duration: videoDuration
           ? Number(videoDuration)
           : null,
         sortOrder: Number(videoSortOrder),
+        published: videoPublished,
       };
 
       if (editingVideo) {
         await api.put(
-          `/courses/${courseId}/videos/${editingVideo.id}`,
+          `/videos/${editingVideo.id}`,
           payload
         );
       } else {
@@ -327,7 +357,7 @@ export default function CourseDetailPage() {
 
     try {
       await api.delete(
-        `/courses/${courseId}/videos/${videoId}`
+        `/videos/${videoId}`
       );
       fetchVideos();
     } catch (err) {
@@ -607,19 +637,57 @@ export default function CourseDetailPage() {
 
               {/* Video Form (Add / Edit) */}
               {showVideoForm && (
-                <div className="mb-6 rounded border bg-gray-50 p-4">
-                  <h3 className="mb-4 font-semibold">
+                <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+                  <h3 className="mb-4 font-bold text-slate-800">
                     {editingVideo
-                      ? "Edit Video"
-                      : "Add New Video"}
+                      ? "Edit Video Lesson"
+                      : "Add New Video Lesson"}
                   </h3>
 
                   <form
                     onSubmit={handleSaveVideo}
-                    className="space-y-3"
+                    className="space-y-4"
                   >
                     <div>
-                      <label className="mb-1 block text-sm font-medium">
+                      <VideoUpload
+                        onUploadComplete={(meta) => {
+                          setVideoUrl(meta.url);
+                          setVideoStoragePath(meta.storagePath);
+                          setVideoFileName(meta.fileName);
+                          setVideoFileSize(meta.fileSize);
+                          setVideoMimeType(meta.mimeType);
+                          if (!videoTitle) {
+                            const nameWithoutExt = meta.fileName.substring(0, meta.fileName.lastIndexOf(".")) || meta.fileName;
+                            const formattedTitle = nameWithoutExt.replace(/[_-]/g, " ");
+                            setVideoTitle(formattedTitle);
+                          }
+                        }}
+                        initialFileName={videoFileName || undefined}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
+                        Or Video URL *
+                      </label>
+
+                      <input
+                        value={videoUrl}
+                        onChange={(e) => {
+                          setVideoUrl(e.target.value);
+                          setVideoStoragePath("");
+                          setVideoFileName("");
+                          setVideoFileSize(null);
+                          setVideoMimeType("");
+                        }}
+                        className="w-full rounded-xl border border-slate-350 p-2.5 shadow-sm text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        placeholder="e.g. https://supabase.co/..."
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
                         Title *
                       </label>
 
@@ -628,30 +696,14 @@ export default function CourseDetailPage() {
                         onChange={(e) =>
                           setVideoTitle(e.target.value)
                         }
-                        className="w-full rounded border p-2"
+                        className="w-full rounded-xl border border-slate-350 p-2.5 shadow-sm text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         placeholder="e.g. Introduction to Java"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-sm font-medium">
-                        Video URL *
-                      </label>
-
-                      <input
-                        value={videoUrl}
-                        onChange={(e) =>
-                          setVideoUrl(e.target.value)
-                        }
-                        className="w-full rounded border p-2"
-                        placeholder="e.g. https://youtube.com/watch?v=..."
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-sm font-medium">
+                      <label className="mb-1 block text-sm font-medium text-slate-700">
                         Description
                       </label>
 
@@ -660,7 +712,7 @@ export default function CourseDetailPage() {
                         onChange={(e) =>
                           setVideoDescription(e.target.value)
                         }
-                        className="w-full rounded border p-2"
+                        className="w-full rounded-xl border border-slate-350 p-2.5 shadow-sm text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         rows={2}
                         placeholder="Optional description..."
                       />
@@ -668,7 +720,7 @@ export default function CourseDetailPage() {
 
                     <div className="flex gap-4">
                       <div className="flex-1">
-                        <label className="mb-1 block text-sm font-medium">
+                        <label className="mb-1 block text-sm font-medium text-slate-700">
                           Duration (seconds)
                         </label>
 
@@ -678,15 +730,15 @@ export default function CourseDetailPage() {
                           onChange={(e) =>
                             setVideoDuration(e.target.value)
                           }
-                          className="w-full rounded border p-2"
+                          className="w-full rounded-xl border border-slate-350 p-2.5 shadow-sm text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           placeholder="e.g. 3600"
                           min="0"
                         />
                       </div>
 
                       <div className="flex-1">
-                        <label className="mb-1 block text-sm font-medium">
-                          Sort Order
+                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                          Sort Order (Lesson Sequence)
                         </label>
 
                         <input
@@ -695,29 +747,44 @@ export default function CourseDetailPage() {
                           onChange={(e) =>
                             setVideoSortOrder(e.target.value)
                           }
-                          className="w-full rounded border p-2"
+                          className="w-full rounded-xl border border-slate-350 p-2.5 shadow-sm text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           min="0"
                         />
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 pt-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          type="checkbox"
+                          id="admin-video-published"
+                          checked={videoPublished}
+                          onChange={(e) => setVideoPublished(e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                        <label htmlFor="admin-video-published" className="text-sm font-medium text-slate-700 cursor-pointer select-none">
+                          Publish lesson (visible to students)
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
                       <button
                         type="submit"
                         disabled={videoSaving}
-                        className="rounded bg-green-600 px-4 py-2 text-sm text-white disabled:opacity-60"
+                        className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60 transition-colors shadow cursor-pointer"
                       >
                         {videoSaving
                           ? "Saving..."
                           : editingVideo
-                            ? "Update Video"
-                            : "Create Video"}
+                            ? "Update Video Lesson"
+                            : "Create Video Lesson"}
                       </button>
 
                       <button
                         type="button"
                         onClick={resetVideoForm}
-                        className="rounded border px-4 py-2 text-sm"
+                        className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -745,40 +812,59 @@ export default function CourseDetailPage() {
 
               {!videosLoading && videos.length > 0 && (
                 <div className="space-y-3">
-                  {videos.map((video, idx) => (
+                  {videos.map((video) => (
                     <div
                       key={video.id}
-                      className="flex items-start justify-between rounded border bg-white p-4"
+                      className="flex items-start justify-between rounded-2xl border border-slate-150 bg-white p-4 shadow-sm hover:shadow transition-shadow"
                     >
-                      <div className="flex items-start gap-3">
-                        <span className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
-                          {idx + 1}
+                      <div className="flex items-start gap-3 min-w-0">
+                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-xs font-bold text-indigo-600">
+                          {video.sortOrder}
                         </span>
 
-                        <div>
-                          <p className="font-medium">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-800 truncate">
                             {video.title}
                           </p>
 
                           {video.description && (
-                            <p className="mt-0.5 text-sm text-gray-500">
+                            <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">
                               {video.description}
                             </p>
                           )}
 
-                          <div className="mt-1 flex items-center gap-3 text-xs text-gray-400">
-                            <span>
-                              ⏱{" "}
-                              {formatDuration(video.duration)}
+                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+                            <span className="flex items-center gap-1">
+                              ⏱ {formatDuration(video.duration)}
                             </span>
+
+                            {video.storagePath ? (
+                              <span className="flex items-center gap-1.5 text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-lg text-[10px]">
+                                📁 Supabase Storage • {(video.fileSize ? (video.fileSize / (1024 * 1024)).toFixed(1) : 0)} MB
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1.5 text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg text-[10px]">
+                                🔗 External URL
+                              </span>
+                            )}
+
+                            {video.published !== false ? (
+                              <span className="flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-lg text-[10px] border border-emerald-200">
+                                Published
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded-lg text-[10px] border border-amber-200">
+                                Draft
+                              </span>
+                            )}
 
                             <a
                               href={video.videoUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline"
+                              className="text-indigo-600 hover:underline inline-flex items-center gap-0.5 font-semibold"
                             >
-                              🔗 Open Video
+                              Open Lesson Link ↗
                             </a>
                           </div>
                         </div>
@@ -789,7 +875,7 @@ export default function CourseDetailPage() {
                           onClick={() =>
                             openEditVideo(video)
                           }
-                          className="rounded bg-yellow-500 px-3 py-1 text-xs text-white"
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-350 transition-colors cursor-pointer"
                         >
                           Edit
                         </button>
@@ -798,7 +884,7 @@ export default function CourseDetailPage() {
                           onClick={() =>
                             handleDeleteVideo(video.id)
                           }
-                          className="rounded bg-red-500 px-3 py-1 text-xs text-white"
+                          className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-750 hover:bg-rose-100 transition-colors cursor-pointer"
                         >
                           Delete
                         </button>

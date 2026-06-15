@@ -37,6 +37,7 @@ model User {
   coursesTaught Course[]      @relation("FacultyCourses")
   enrollments   Enrollment[]
   institute     Institute?    @relation(fields: [instituteId], references: [id])
+  progresses    Progress[]
 
   @@index([role])
   @@index([deletedAt])
@@ -99,13 +100,19 @@ model Video {
   title       String
   description String?
   videoUrl    String
+  storagePath String?
+  fileName    String?
+  fileSize    Int?
+  mimeType    String?
   duration    Int?
   sortOrder   Int       @default(0)
+  published   Boolean   @default(true)
   courseId    String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
   course      Course    @relation(fields: [courseId], references: [id])
+  progresses  Progress[]
 
   @@index([courseId])
   @@index([deletedAt])
@@ -206,4 +213,19 @@ enum MaterialType {
   PPTX
   XLSX
   OTHER
+}
+
+model Progress {
+  id        String   @id @default(cuid())
+  userId    String
+  videoId   String
+  completed Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id])
+  video Video @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, videoId])
 }

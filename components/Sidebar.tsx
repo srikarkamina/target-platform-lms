@@ -1,35 +1,43 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LayoutDashboard, Users, BookOpen, Video, FileText } from "lucide-react";
 
 export default function Sidebar() {
+  const pathname = usePathname();
+
+  const menuItems = [
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Students", href: "/dashboard/students", icon: Users },
+    { name: "Courses", href: "/dashboard/courses", icon: BookOpen },
+    { name: "Videos", href: "/dashboard/videos", icon: Video },
+    { name: "Materials", href: "/dashboard/materials", icon: FileText },
+  ];
+
   return (
-    <div className="h-screen w-64 border-r p-4">
-      <ul className="space-y-4">
-        <li>
-          <Link href="/dashboard">Dashboard</Link>
-        </li>
+    <aside className="w-64 border-r border-slate-200 bg-white min-h-[calc(100vh-65px)] shrink-0 font-sans">
+      <nav className="p-4 space-y-1">
+        {menuItems.map((item) => {
+          const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
+          const Icon = item.icon;
 
-        <li>
-          <Link href="/dashboard/students">
-            Students
-          </Link>
-        </li>
-
-        <li>
-          <Link href="/dashboard/courses">
-            Courses
-          </Link>
-        </li>
-
-        <li>
-          <Link href="/dashboard/videos">Videos</Link>
-        </li>
-
-        <li>
-          <Link href="/dashboard/materials">
-            Materials
-          </Link>
-        </li>
-      </ul>
-    </div>
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={`flex items-center gap-3 px-4 py-3.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                isActive
+                  ? "bg-indigo-50 text-indigo-600"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <Icon className={`h-4.5 w-4.5 ${isActive ? "text-indigo-650" : "text-slate-400"}`} />
+              <span>{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </aside>
   );
 }
