@@ -7,6 +7,7 @@ import api from "@/lib/axios";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import VideoUpload from "@/components/videos/VideoUpload";
+import AssignmentList from "@/components/assignments/AssignmentList";
 
 // ─── Type Definitions ───────────────────────────────────────────────────────
 
@@ -58,7 +59,7 @@ interface Enrollment {
   };
 }
 
-type Tab = "info" | "videos" | "materials" | "students";
+type Tab = "info" | "videos" | "materials" | "students" | "assignments";
 
 const MATERIAL_TYPES = [
   "PDF",
@@ -491,6 +492,7 @@ export default function CourseDetailPage() {
     { key: "videos", label: "🎥 Videos" },
     { key: "materials", label: "📄 Materials" },
     { key: "students", label: "👥 Students" },
+    { key: "assignments", label: "📝 Assignments" },
   ];
 
   return (
@@ -1223,6 +1225,13 @@ export default function CourseDetailPage() {
                     </tbody>
                   </table>
                 )}
+            </div>
+          )}
+
+          {/* ── Tab: Assignments ─────────────────────────── */}
+          {activeTab === "assignments" && (
+            <div className="mt-4">
+              <AssignmentList courseId={courseId} />
             </div>
           )}
         </div>

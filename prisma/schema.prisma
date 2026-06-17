@@ -38,6 +38,7 @@ model User {
   enrollments   Enrollment[]
   institute     Institute?    @relation(fields: [instituteId], references: [id])
   progresses    Progress[]
+  submissions   Submission[]
 
   @@index([role])
   @@index([deletedAt])
@@ -136,17 +137,35 @@ model Material {
 }
 
 model Assignment {
-  id          String    @id @default(uuid())
+  id          String       @id @default(cuid())
   title       String
   description String?
-  dueDate     DateTime
+  dueDate     DateTime?
   courseId    String
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime     @default(now())
   deletedAt   DateTime?
-  course      Course    @relation(fields: [courseId], references: [id])
+  course      Course       @relation(fields: [courseId], references: [id])
+  submissions Submission[]
 
   @@index([courseId])
   @@index([deletedAt])
+}
+
+model Submission {
+  id           String     @id @default(cuid())
+  assignmentId String
+  studentId    String
+  fileUrl      String?
+  fileName     String?
+  mimeType     String?
+  fileSize     Int?
+  submittedAt  DateTime   @default(now())
+  grade        Int?
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  student      User       @relation(fields: [studentId], references: [id])
+
+  @@index([assignmentId])
+  @@index([studentId])
 }
 
 model Test {
