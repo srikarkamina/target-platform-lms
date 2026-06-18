@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, BookOpen, Video, FileText, ClipboardCheck, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, Video, FileText, ClipboardCheck, ClipboardList, Award } from "lucide-react";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -50,6 +50,7 @@ export default function Sidebar() {
 
   if (isManagementRole) {
     menuItems.push({ name: "Submissions", href: "/dashboard/submissions", icon: ClipboardList });
+    menuItems.push({ name: "Quizzes", href: "/dashboard/quizzes", icon: Award });
   }
 
   return (
