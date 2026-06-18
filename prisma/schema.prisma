@@ -19,26 +19,29 @@ model Institute {
   courses   Course[]
   payments  Payment[]
   users     User[]
+  quizzes   Quiz[]
 
   @@index([deletedAt])
 }
 
 model User {
-  id            String        @id @default(uuid())
-  name          String
-  email         String        @unique
-  password      String
-  role          Role
-  instituteId   String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  deletedAt     DateTime?
-  certificates  Certificate[]
-  coursesTaught Course[]      @relation("FacultyCourses")
-  enrollments   Enrollment[]
-  institute     Institute?    @relation(fields: [instituteId], references: [id])
-  progresses    Progress[]
-  submissions   Submission[]
+  id             String        @id @default(uuid())
+  name           String
+  email          String        @unique
+  password       String
+  role           Role
+  instituteId    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+  certificates   Certificate[]
+  coursesTaught  Course[]      @relation("FacultyCourses")
+  enrollments    Enrollment[]
+  institute      Institute?    @relation(fields: [instituteId], references: [id])
+  progresses     Progress[]
+  submissions    Submission[]
+  quizzesCreated Quiz[]        @relation("CreatedQuizzes")
+  quizAttempts   QuizAttempt[] @relation("StudentQuizAttempts")
 
   @@index([role])
   @@index([deletedAt])
@@ -62,6 +65,7 @@ model Course {
   tests        Test[]
   videos       Video[]
   materials    Material[]
+  quizzes      Quiz[]
 
   @@index([instituteId])
   @@index([facultyId])
@@ -97,7 +101,7 @@ model Enrollment {
 }
 
 model Video {
-  id          String    @id @default(uuid())
+  id          String     @id @default(uuid())
   title       String
   description String?
   videoUrl    String
@@ -106,13 +110,13 @@ model Video {
   fileSize    Int?
   mimeType    String?
   duration    Int?
-  sortOrder   Int       @default(0)
-  published   Boolean   @default(true)
+  sortOrder   Int        @default(0)
+  published   Boolean    @default(true)
   courseId    String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   deletedAt   DateTime?
-  course      Course    @relation(fields: [courseId], references: [id])
+  course      Course     @relation(fields: [courseId], references: [id])
   progresses  Progress[]
 
   @@index([courseId])
@@ -235,10 +239,10 @@ enum MaterialType {
 }
 
 model Progress {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   userId    String
   videoId   String
-  completed Boolean  @default(false)
+  completed Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -247,4 +251,85 @@ model Progress {
   video Video @relation(fields: [videoId], references: [id])
 
   @@unique([userId, videoId])
+}
+
+enum QuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+}
+
+model Quiz {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  courseId     String
+  timeLimit    Int
+  passingMarks Int
+  totalMarks   Int
+  isPublished  Boolean  @default(false)
+  createdBy    String
+  instituteId  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator   User          @relation("CreatedQuizzes", fields: [createdBy], references: [id])
+  institute Institute     @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  questions Question[]
+  attempts  QuizAttempt[]
+
+  @@index([courseId])
+  @@index([createdBy])
+  @@index([instituteId])
+}
+
+model Question {
+  id             String       @id @default(uuid())
+  quizId         String
+  question       String
+  options        Json
+  correctAnswers Json
+  questionType   QuestionType
+  marks          Int
+  order          Int
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers QuizAnswer[]
+
+  @@index([quizId])
+}
+
+model QuizAttempt {
+  id          String    @id @default(uuid())
+  quizId      String
+  studentId   String
+  score       Float
+  percentage  Float
+  passed      Boolean
+  startedAt   DateTime
+  submittedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student User         @relation("StudentQuizAttempts", fields: [studentId], references: [id], onDelete: Cascade)
+  answers QuizAnswer[]
+
+  @@index([quizId])
+  @@index([studentId])
+}
+
+model QuizAnswer {
+  id              String  @id @default(uuid())
+  attemptId       String
+  questionId      String
+  selectedAnswers Json
+  isCorrect       Boolean
+
+  attempt  QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
+  @@index([questionId])
 }
