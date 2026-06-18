@@ -259,18 +259,19 @@ enum QuestionType {
 }
 
 model Quiz {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   title        String
   description  String?
   courseId     String
   timeLimit    Int
   passingMarks Int
   totalMarks   Int
-  isPublished  Boolean  @default(false)
+  isPublished  Boolean   @default(false)
   createdBy    String
   instituteId  String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   creator   User          @relation("CreatedQuizzes", fields: [createdBy], references: [id])
@@ -281,6 +282,7 @@ model Quiz {
   @@index([courseId])
   @@index([createdBy])
   @@index([instituteId])
+  @@index([deletedAt])
 }
 
 model Question {
