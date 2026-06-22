@@ -186,7 +186,7 @@ async function main() {
     console.log("Status:", res4.status);
     const body4 = await res4.json();
     console.log("Total Count:", body4.total);
-    console.log("Quizzes:", body4.quizzes?.map((q: any) => q.title));
+    console.log("Quizzes:", body4.quizzes?.map((q: any) => `${q.title} (Questions: ${q._count?.questions})`));
 
     // TEST 5: GET /api/quizzes (List Quizzes as Admin 2 - Expecting 0 Quizzes due to Tenant Isolation)
     console.log("\n--- Test 5: List Quizzes (Admin 2 - Expecting 0 Quizzes due to Tenant Isolation) ---");

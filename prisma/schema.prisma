@@ -165,6 +165,7 @@ model Submission {
   fileSize     Int?
   submittedAt  DateTime   @default(now())
   grade        Int?
+  feedback     String?
   assignment   Assignment @relation(fields: [assignmentId], references: [id])
   student      User       @relation(fields: [studentId], references: [id])
 
@@ -310,6 +311,7 @@ model QuizAttempt {
   score       Float
   percentage  Float
   passed      Boolean
+  status      String    @default("IN_PROGRESS")
   startedAt   DateTime
   submittedAt DateTime?
   createdAt   DateTime  @default(now())

@@ -222,6 +222,11 @@ export async function GET(req: NextRequest) {
               courseCode: true,
             },
           },
+          _count: {
+            select: {
+              questions: true,
+            },
+          },
         },
         orderBy: {
           createdAt: "desc",

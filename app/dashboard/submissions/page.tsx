@@ -29,6 +29,7 @@ interface Submission {
   fileSize: number | null;
   submittedAt: string;
   grade: number | null;
+  feedback: string | null;
   assignment: {
     id: string;
     title: string;
@@ -69,6 +70,7 @@ export default function SubmissionsDashboard() {
   const [isGradeOpen, setIsGradeOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [gradeInput, setGradeInput] = useState("");
+  const [feedbackInput, setFeedbackInput] = useState("");
   const [savingGrade, setSavingGrade] = useState(false);
 
   // Parse JWT
@@ -164,6 +166,7 @@ export default function SubmissionsDashboard() {
   const handleOpenGradeModal = (sub: Submission) => {
     setSelectedSubmission(sub);
     setGradeInput(sub.grade !== null ? String(sub.grade) : "");
+    setFeedbackInput(sub.feedback || "");
     setIsGradeOpen(true);
   };
 
@@ -179,14 +182,17 @@ export default function SubmissionsDashboard() {
 
     try {
       setSavingGrade(true);
-      await api.put(`/submissions/${selectedSubmission.id}`, { grade: parsedGrade });
-      toast.success("Grade saved successfully!");
+      await api.put(`/submissions/${selectedSubmission.id}`, {
+        grade: parsedGrade,
+        feedback: feedbackInput.trim() || null,
+      });
+      toast.success("Grade and feedback saved successfully!");
       setIsGradeOpen(false);
       setSelectedSubmission(null);
       fetchData();
     } catch (err) {
-      console.error("Failed to save grade:", err);
-      toast.error("Failed to save grade.");
+      console.error("Failed to save grade and feedback:", err);
+      toast.error("Failed to save grade and feedback.");
     } finally {
       setSavingGrade(false);
     }
@@ -515,6 +521,21 @@ export default function SubmissionsDashboard() {
                         placeholder="e.g. 95"
                         className="w-full rounded-xl border border-slate-300 p-3 shadow-xs text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         required
+                        disabled={savingGrade}
+                      />
+                    </div>
+
+                    {/* Feedback input */}
+                    <div>
+                      <label className="block text-slate-650 font-bold text-xs uppercase tracking-wider mb-1">
+                        Faculty Feedback
+                      </label>
+                      <textarea
+                        value={feedbackInput}
+                        onChange={(e) => setFeedbackInput(e.target.value)}
+                        placeholder="Enter student feedback here..."
+                        rows={4}
+                        className="w-full rounded-xl border border-slate-300 p-3 shadow-xs text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         disabled={savingGrade}
                       />
                     </div>

@@ -246,7 +246,7 @@ export default function VideoForm({
           id="published"
           checked={published}
           onChange={(e) => setPublished(e.target.checked)}
-          className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
+          className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
         />
         <label htmlFor="published" className="text-sm font-medium text-slate-700 cursor-pointer select-none">
           Publish this lesson (visible to students)

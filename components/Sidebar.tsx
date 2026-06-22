@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, BookOpen, Video, FileText, ClipboardCheck, ClipboardList, Award } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, Video, FileText, ClipboardCheck, ClipboardList, Award, BarChart3 } from "lucide-react";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -51,7 +51,12 @@ export default function Sidebar() {
   if (isManagementRole) {
     menuItems.push({ name: "Submissions", href: "/dashboard/submissions", icon: ClipboardList });
     menuItems.push({ name: "Quizzes", href: "/dashboard/quizzes", icon: Award });
+  } else {
+    menuItems.push({ name: "My Submissions", href: "/dashboard/student/submissions", icon: ClipboardList });
+    menuItems.push({ name: "Quizzes", href: "/dashboard/student/quizzes", icon: Award });
   }
+
+  menuItems.push({ name: "Reports & Analytics", href: "/dashboard/reports", icon: BarChart3 });
 
   return (
     <aside className="w-64 border-r border-slate-200 bg-white min-h-[calc(100vh-65px)] shrink-0 font-sans">
@@ -70,7 +75,7 @@ export default function Sidebar() {
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
-              <Icon className={`h-4.5 w-4.5 ${isActive ? "text-indigo-650" : "text-slate-400"}`} />
+              <Icon className={`h-4.5 w-4.5 ${isActive ? "text-indigo-600" : "text-slate-400"}`} />
               <span>{item.name}</span>
             </Link>
           );

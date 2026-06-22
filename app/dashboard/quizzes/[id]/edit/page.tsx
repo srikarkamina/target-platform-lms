@@ -120,30 +120,30 @@ export default function EditQuizPage({ params }: EditQuizPageProps) {
           </div>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-slate-150 shadow-sm min-h-[300px]">
+            <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[300px]">
               <Loader2 className="h-8 w-8 text-indigo-600 animate-spin mb-3" />
               <p className="text-sm text-slate-500 font-medium">Loading quiz details...</p>
             </div>
           ) : error ? (
-            <div className="rounded-2xl border border-rose-250 bg-rose-50 p-6 text-center space-y-4 max-w-lg mx-auto">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center space-y-4 max-w-lg mx-auto">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
                 <AlertCircle className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-850">Failed to Load Quiz</h3>
+                <h3 className="text-lg font-bold text-slate-800">Failed to Load Quiz</h3>
                 <p className="text-sm text-slate-500 mt-1">{error}</p>
               </div>
               <div>
                 <button
                   onClick={() => router.push("/dashboard/quizzes")}
-                  className="rounded-xl bg-indigo-600 hover:bg-indigo-750 px-5 py-2.5 text-sm font-semibold text-white shadow transition-colors cursor-pointer"
+                  className="rounded-xl bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 text-sm font-semibold text-white shadow transition-colors cursor-pointer"
                 >
                   Return to Quizzes
                 </button>
               </div>
             </div>
           ) : quiz ? (
-            <div className="bg-white border border-slate-150 rounded-2xl p-6 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
               <QuizForm
                 initialData={{
                   title: quiz.title,

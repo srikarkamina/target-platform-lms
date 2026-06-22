@@ -10,6 +10,14 @@ export async function GET(
   try {
     const { id } = await params;
 
+    const payload = await authenticateRequest(request as any);
+    if (!payload) {
+      return NextResponse.json(
+        { message: "Unauthorized: Missing or invalid token" },
+        { status: 401 }
+      );
+    }
+
     const submission = await prisma.submission.findUnique({
       where: {
         id,
@@ -41,6 +49,18 @@ export async function GET(
       return NextResponse.json(
         { message: "Submission not found" },
         { status: 404 }
+      );
+    }
+
+    const isManagement =
+      payload.role === "ADMIN" ||
+      payload.role === "SUPER_ADMIN" ||
+      payload.role === "FACULTY";
+
+    if (!isManagement && submission.studentId !== payload.id) {
+      return NextResponse.json(
+        { message: "Forbidden: You cannot view this submission" },
+        { status: 403 }
       );
     }
 
@@ -82,7 +102,7 @@ export async function PUT(
         { status: 400 }
       );
     }
-    console.log("[SUBMISSION DETAILS PUT] Zod validation passed.");
+    console.log("[SUBMISSION DETAILS PUT] Zod validation passed. Parsed data:", JSON.stringify(validation.data, null, 2));
 
     // Check if submission exists
     const submission = await prisma.submission.findUnique({
@@ -118,9 +138,12 @@ export async function PUT(
 
     if (isManagement) {
       console.log("[SUBMISSION DETAILS PUT] Performing update as instructor/management role.");
-      // Instructors can grade the submission or adjust properties
+      // Instructors can grade the submission, give feedback, or adjust properties
       if (validation.data.grade !== undefined) {
         dataToUpdate.grade = validation.data.grade;
+      }
+      if (validation.data.feedback !== undefined) {
+        dataToUpdate.feedback = validation.data.feedback;
       }
       if (validation.data.fileUrl !== undefined) {
         dataToUpdate.fileUrl = validation.data.fileUrl;
@@ -148,11 +171,19 @@ export async function PUT(
         );
       }
 
-      // Ensure students do not try to input a grade
+      // Ensure students do not try to input a grade or feedback
       if (validation.data.grade !== undefined) {
         console.warn("[SUBMISSION DETAILS PUT] Forbidden: Student tried to assign/update grade.");
         return NextResponse.json(
           { message: "Forbidden: Students are not allowed to update grades" },
+          { status: 403 }
+        );
+      }
+
+      if (validation.data.feedback !== undefined) {
+        console.warn("[SUBMISSION DETAILS PUT] Forbidden: Student tried to update feedback.");
+        return NextResponse.json(
+          { message: "Forbidden: Students are not allowed to update feedback" },
           { status: 403 }
         );
       }

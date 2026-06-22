@@ -5,6 +5,14 @@ import { createSubmissionSchema } from "@/lib/validations/submission";
 
 export async function GET(req: NextRequest) {
   try {
+    const payload = await authenticateRequest(req);
+    if (!payload) {
+      return NextResponse.json(
+        { message: "Unauthorized: Missing or invalid token" },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const assignmentId = searchParams.get("assignmentId");
     const studentId = searchParams.get("studentId");
@@ -15,8 +23,17 @@ export async function GET(req: NextRequest) {
       where.assignmentId = assignmentId;
     }
 
-    if (studentId) {
-      where.studentId = studentId;
+    const isManagement =
+      payload.role === "ADMIN" ||
+      payload.role === "SUPER_ADMIN" ||
+      payload.role === "FACULTY";
+
+    if (isManagement) {
+      if (studentId) {
+        where.studentId = studentId;
+      }
+    } else {
+      where.studentId = payload.id;
     }
 
     const submissions = await prisma.submission.findMany({

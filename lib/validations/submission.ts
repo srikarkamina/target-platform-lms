@@ -15,4 +15,5 @@ export const updateSubmissionSchema = z.object({
   fileName: z.string().min(1, "File Name is required").optional(),
   mimeType: z.string().optional().nullable(),
   fileSize: z.number().int().nonnegative().optional().nullable(),
+  feedback: z.string().optional().nullable(),
 });
