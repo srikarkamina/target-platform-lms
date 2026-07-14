@@ -4,9 +4,9 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/axios";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
-import { Award, ArrowLeft, CheckCircle2, XCircle, Calendar, Clock, BookOpen, AlertCircle, Loader2 } from "lucide-react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
+import { ArrowLeft, CheckCircle2, XCircle, Calendar, Clock, AlertCircle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Question {
@@ -79,16 +79,12 @@ export default function QuizResultPage({ params }: { params: Promise<{ id: strin
 
   if (loading || !attempt) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-        <Navbar />
-        <div className="flex flex-1">
-          <Sidebar />
-          <main className="flex-1 flex flex-col items-center justify-center p-12">
+      <DashboardLayout>
+      <DashboardPageContainer maxWidth="max-w-4xl">
             <Loader2 className="h-10 w-10 text-indigo-600 animate-spin mb-4" />
             <p className="text-sm font-semibold text-slate-600">Fetching submission score report...</p>
-          </main>
-        </div>
-      </div>
+          </DashboardPageContainer>
+    </DashboardLayout>
     );
   }
 
@@ -110,13 +106,8 @@ export default function QuizResultPage({ params }: { params: Promise<{ id: strin
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-      <Navbar />
-
-      <div className="flex flex-1">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-6 max-w-4xl mx-auto">
+    <DashboardLayout>
+      <DashboardPageContainer maxWidth="max-w-4xl">
           {/* Back Button */}
           <Link
             href="/dashboard/student/quizzes"
@@ -316,8 +307,7 @@ export default function QuizResultPage({ params }: { params: Promise<{ id: strin
               );
             })}
           </div>
-        </main>
-      </div>
-    </div>
+        </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

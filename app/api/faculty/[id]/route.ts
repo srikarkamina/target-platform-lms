@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { SubscriptionService } from "@/lib/services/subscription-service";
 
 export async function GET(
   request: Request,
@@ -35,12 +36,20 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  await prisma.user.update({
+  const targetFaculty = await prisma.user.update({
     where: { id },
     data: {
       deletedAt: new Date(),
     },
   });
+
+  try {
+    if (targetFaculty.instituteId) {
+      await SubscriptionService.takeUsageSnapshot(targetFaculty.instituteId);
+    }
+  } catch (snapshotErr) {
+    console.error("Failed to record usage snapshot on faculty delete:", snapshotErr);
+  }
 
   return NextResponse.json({
     message: "Faculty deleted",

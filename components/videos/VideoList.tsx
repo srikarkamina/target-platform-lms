@@ -67,8 +67,9 @@ export default function VideoList({ videos, onDelete, loading = false }: VideoLi
   }
 
   return (
-    <div className="overflow-hidden bg-white border border-slate-150 rounded-2xl shadow-sm">
-      <div className="overflow-x-auto">
+    <div className="overflow-hidden bg-white border border-slate-150 rounded-2xl shadow-sm flex flex-col">
+      {/* Desktop Table View */}
+      <div className="overflow-x-auto hidden md:block">
         <table className="w-full border-collapse text-left text-sm text-slate-500">
           <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600 border-b border-slate-150">
             <tr>
@@ -148,21 +149,21 @@ export default function VideoList({ videos, onDelete, loading = false }: VideoLi
                       href={video.videoUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-500 hover:text-slate-700 transition-colors"
+                      className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-505 hover:text-slate-700 transition-colors"
                       title="Open Video URL"
                     >
                       <ExternalLink className="h-4 w-4" />
                     </a>
                     <Link
                       href={`/dashboard/videos/${video.id}/edit`}
-                      className="p-1.5 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 text-slate-500 hover:text-indigo-600 transition-colors"
+                      className="p-1.5 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 text-slate-505 hover:text-indigo-600 transition-colors"
                       title="Edit Video"
                     >
                       <Edit className="h-4 w-4" />
                     </Link>
                     <button
                       onClick={() => onDelete(video.courseId, video.id)}
-                      className="p-1.5 rounded-lg border border-slate-200 hover:bg-rose-50 hover:border-rose-200 text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg border border-slate-200 hover:bg-rose-50 hover:border-rose-200 text-slate-505 hover:text-rose-600 transition-colors cursor-pointer"
                       title="Delete Video"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -173,6 +174,83 @@ export default function VideoList({ videos, onDelete, loading = false }: VideoLi
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Stacked Card View */}
+      <div className="block md:hidden divide-y divide-slate-100 bg-white">
+        {videos.map((video) => (
+          <div key={video.id} className="p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2.5 min-w-0">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-xs font-semibold text-indigo-600 mt-0.5">
+                  {video.sortOrder}
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-800 text-sm truncate">{video.title}</p>
+                  <p className="text-[10px] text-indigo-650 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md mt-1 inline-block font-mono">
+                    {video.course.courseCode}
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0">
+                {video.published ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-2xs font-semibold text-emerald-700 border border-emerald-150">
+                    Published
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-2xs font-semibold text-slate-600 border border-slate-200">
+                    Draft
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {video.description && (
+              <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                {video.description}
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs">
+              <div className="space-y-1">
+                <p className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Duration</p>
+                <p className="font-bold text-slate-700 font-mono">{formatDuration(video.duration)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Storage</p>
+                <p className="font-bold text-slate-700 truncate" title={video.fileName || ""}>
+                  {video.storagePath ? `Supabase (${formatFileSize(video.fileSize)})` : "External URL"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-1">
+              <a
+                href={video.videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-700 transition-colors"
+                title="Open Video URL"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+              <Link
+                href={`/dashboard/videos/${video.id}/edit`}
+                className="p-2 rounded-xl border border-slate-200 hover:bg-indigo-50 text-slate-500 hover:text-indigo-650 transition-colors"
+                title="Edit Video"
+              >
+                <Edit className="h-4 w-4" />
+              </Link>
+              <button
+                onClick={() => onDelete(video.courseId, video.id)}
+                className="p-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+                title="Delete Video"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

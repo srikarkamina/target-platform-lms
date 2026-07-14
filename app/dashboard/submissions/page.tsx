@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
+import FileAttachmentCard from "@/components/common/FileAttachmentCard";
 import { 
   ClipboardList, 
   Search, 
@@ -12,7 +13,6 @@ import {
   User, 
   CheckCircle, 
   Clock, 
-  ExternalLink, 
   Loader2, 
   GraduationCap, 
   FileText,
@@ -201,30 +201,21 @@ export default function SubmissionsDashboard() {
   // Student Access Denied View
   if (!loading && !isManagementRole) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-50">
-        <Navbar />
-        <div className="flex flex-1">
-          <Sidebar />
-          <main className="flex-1 p-8 flex flex-col items-center justify-center font-sans">
+      <DashboardLayout>
+      <DashboardPageContainer>
             <AlertTriangle className="h-12 w-12 text-rose-500 mb-3" />
             <h3 className="text-lg font-bold text-slate-800">Access Denied</h3>
             <p className="text-sm text-slate-550 mt-1 max-w-sm text-center leading-relaxed">
               This dashboard is only accessible to faculty and administrators. Students can view coursework and upload assignments directly via the assignments tab inside their courses.
             </p>
-          </main>
-        </div>
-      </div>
+          </DashboardPageContainer>
+    </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <Navbar />
-
-      <div className="flex flex-1">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-6 font-sans">
+    <DashboardLayout>
+      <DashboardPageContainer>
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -357,8 +348,9 @@ export default function SubmissionsDashboard() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+              {/* Desktop Table View */}
+              <div className="overflow-x-auto hidden md:block">
                 <table className="w-full border-collapse text-left text-sm text-slate-650">
                   <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase text-slate-500">
                     <tr>
@@ -427,6 +419,67 @@ export default function SubmissionsDashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Stacked Card View */}
+              <div className="block md:hidden divide-y divide-slate-100 bg-white">
+                {filteredSubmissions.map((sub) => (
+                  <div key={sub.id} className="p-5 space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-extrabold text-slate-800 text-sm truncate">{sub.student.name}</p>
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">{sub.student.email}</p>
+                      </div>
+                      <div className="shrink-0 font-extrabold text-sm">
+                        {sub.grade !== null ? (
+                          <span className="text-emerald-700 font-mono font-black">{sub.grade} / 100</span>
+                        ) : (
+                          <span className="text-slate-400 font-mono">—</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs">
+                      <div className="space-y-1 col-span-2">
+                        <p className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Assignment</p>
+                        <p className="font-bold text-slate-800 leading-tight">{sub.assignment.title}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Course</p>
+                        <p className="font-bold text-indigo-650 leading-tight truncate" title={getCourseTitle(sub.assignment.courseId)}>
+                          {getCourseTitle(sub.assignment.courseId)}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Submitted Date</p>
+                        <p className="font-bold text-slate-500 font-mono">{new Date(sub.submittedAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 pt-1">
+                      <div>
+                        {sub.grade !== null ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-2xs font-semibold text-emerald-700 border border-emerald-250">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                            Graded
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-2xs font-semibold text-amber-700 border border-amber-220">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                            Pending
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => handleOpenGradeModal(sub)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition-colors cursor-pointer"
+                      >
+                        <span>View & Grade</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -479,30 +532,14 @@ export default function SubmissionsDashboard() {
 
                     {/* File Attachment URL */}
                     <div>
-                      <p className="text-slate-400 text-xs font-bold mb-1">Attached Work</p>
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-2">
-                        <div className="flex items-center gap-2 text-slate-700">
-                          <FileText className="h-5 w-5 text-indigo-650 shrink-0" />
-                          <span className="font-semibold truncate flex-1" title={selectedSubmission.fileName || "Submitted File"}>
-                            {selectedSubmission.fileName || "Submitted File"}
-                          </span>
-                        </div>
-                        {selectedSubmission.fileSize && (
-                          <p className="text-[10px] text-slate-450 font-mono">
-                            Size: {(selectedSubmission.fileSize / (1024 * 1024)).toFixed(2)} MB
-                          </p>
-                        )}
-                        <a
-                          href={selectedSubmission.fileUrl || "#"}
-                          download={selectedSubmission.fileName || undefined}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-650 hover:bg-indigo-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors cursor-pointer"
-                        >
-                          <span>Download File</span>
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
-                      </div>
+                      <p className="text-slate-400 text-xs font-bold mb-2">Attached Work</p>
+                      <FileAttachmentCard
+                        fileName={selectedSubmission.fileName}
+                        fileUrl={selectedSubmission.fileUrl}
+                        fileSize={selectedSubmission.fileSize}
+                        submittedAt={selectedSubmission.submittedAt}
+                        mimeType={selectedSubmission.mimeType}
+                      />
                     </div>
 
                     <hr className="border-slate-100" />
@@ -567,8 +604,7 @@ export default function SubmissionsDashboard() {
               </div>
             </div>
           )}
-        </main>
-      </div>
-    </div>
+        </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

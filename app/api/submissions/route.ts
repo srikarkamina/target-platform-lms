@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/auth";
 import { createSubmissionSchema } from "@/lib/validations/submission";
+import { logAction } from "@/lib/services/audit-service";
 
 export async function GET(req: NextRequest) {
   try {
@@ -140,6 +141,33 @@ export async function POST(req: NextRequest) {
       },
     });
     console.log(`[SUBMISSIONS ROUTE] Submission record created successfully in DB: id="${submission.id}"`);
+
+    const dbStudent = await prisma.user.findUnique({
+      where: { id: studentId },
+      select: { instituteId: true }
+    });
+
+    await logAction({
+      req,
+      userId: studentId,
+      instituteId: dbStudent?.instituteId || "global",
+      action: "SUBMIT",
+      module: "ASSIGNMENTS",
+      entityType: "Submission",
+      entityId: submission.id,
+      description: `Assignment submitted: "${assignment.title}"`,
+      newValues: submission,
+      status: "SUCCESS",
+    });
+
+    try {
+      const { SubscriptionService } = await import("@/lib/services/subscription-service");
+      if (dbStudent?.instituteId) {
+        await SubscriptionService.takeUsageSnapshot(dbStudent.instituteId);
+      }
+    } catch (snapshotErr) {
+      console.error("Failed to record usage snapshot on submission creation:", snapshotErr);
+    }
 
     return NextResponse.json(submission, { status: 201 });
   } catch (error) {

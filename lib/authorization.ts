@@ -13,6 +13,15 @@ export interface AuthorizedUser {
  * This is crucial because instituteId is not currently serialized in the client's JWT payload.
  */
 export async function getAuthorizedUser(payload: JWTPayload): Promise<AuthorizedUser | null> {
+  if (payload.id && payload.email && payload.role && payload.instituteId !== undefined) {
+    return {
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+      instituteId: payload.instituteId,
+    };
+  }
+
   const dbUser = await prisma.user.findUnique({
     where: { id: payload.id },
     select: { id: true, email: true, role: true, instituteId: true },

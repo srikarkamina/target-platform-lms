@@ -280,9 +280,8 @@ export default function VideoWatchPage() {
         </div>
       </div>
 
-      {/* Tabs Menu */}
       <div className="border-t border-slate-200 pt-6">
-        <div className="flex gap-2 border-b border-slate-200 pb-px mb-6">
+        <div className="flex gap-2 border-b border-slate-200 pb-px mb-6 overflow-x-auto whitespace-nowrap">
           {(
             [
               { id: "overview", label: "Overview", icon: BookOpen },

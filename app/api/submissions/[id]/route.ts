@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/auth";
 import { updateSubmissionSchema } from "@/lib/validations/submission";
+import fs from "fs/promises";
+import path from "path";
+import { logAction } from "@/lib/services/audit-service";
 
 export async function GET(
   request: Request,
@@ -196,6 +199,20 @@ export async function PUT(
       }
     }
 
+    // Deleting old file if a new file is uploaded and replaces the old one
+    if (dataToUpdate.fileUrl && submission.fileUrl && submission.fileUrl !== dataToUpdate.fileUrl) {
+      const oldFilePath = path.join(process.cwd(), "public", submission.fileUrl);
+      try {
+        const pathExists = await fs.access(oldFilePath).then(() => true).catch(() => false);
+        if (pathExists) {
+          await fs.unlink(oldFilePath);
+          console.log(`[SUBMISSION DETAILS PUT] Deleted old submission file: ${oldFilePath}`);
+        }
+      } catch (unlinkErr) {
+        console.error(`[SUBMISSION DETAILS PUT] Error deleting old submission file: ${oldFilePath}`, unlinkErr);
+      }
+    }
+
     console.log("[SUBMISSION DETAILS PUT] Updating record with data:", JSON.stringify(dataToUpdate, null, 2));
 
     const updatedSubmission = await prisma.submission.update({
@@ -221,6 +238,26 @@ export async function PUT(
     });
 
     console.log("[SUBMISSION DETAILS PUT] Submission successfully updated.");
+
+    const instituteId = payload?.instituteId || "global";
+
+    const isGrading = isManagement && (validation.data.grade !== undefined || validation.data.feedback !== undefined);
+
+    await logAction({
+      req,
+      userId: payload?.id || null,
+      instituteId,
+      action: isGrading ? "GRADE" : "UPDATE",
+      module: "ASSIGNMENTS",
+      entityType: "Submission",
+      entityId: id,
+      description: isGrading
+        ? `Submission graded for student: ${updatedSubmission.student.name} (Grade: ${validation.data.grade})`
+        : `Submission updated by student: ${updatedSubmission.student.name}`,
+      oldValues: submission,
+      newValues: updatedSubmission,
+      status: "SUCCESS",
+    });
 
     return NextResponse.json(updatedSubmission);
   } catch (error) {

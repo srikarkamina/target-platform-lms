@@ -165,13 +165,13 @@ export default function AssignmentForm({
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end gap-3 pt-2">
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
@@ -179,7 +179,7 @@ export default function AssignmentForm({
         <button
           type="submit"
           disabled={loading}
-          className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-extrabold text-white shadow hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          className="w-full sm:w-auto rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-extrabold text-white shadow hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           {loading ? "Saving..." : initialData ? "Update Assignment" : "Create Assignment"}
         </button>

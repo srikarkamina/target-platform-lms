@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import Link from "next/link";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/axios";
 
@@ -16,6 +16,39 @@ export default function NewCoursePage() {
   const [description, setDescription] = useState("");
   const [courseCode, setCourseCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
+
+  const parseJwt = (token: string) => {
+    try {
+      const base64Url = token.split(".")[1];
+      if (!base64Url) return null;
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        window
+          .atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      return JSON.parse(jsonPayload);
+    } catch {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    const payload = parseJwt(token);
+    if (payload && payload.role) {
+      setRole(payload.role);
+    }
+    setRoleLoading(false);
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,14 +76,39 @@ export default function NewCoursePage() {
     }
   }
 
+  if (roleLoading) {
+    return (
+      <DashboardLayout>
+        <DashboardPageContainer>
+          <div className="flex h-96 items-center justify-center">
+            <Loader2 className="h-8 w-8 text-indigo-650 animate-spin" />
+          </div>
+        </DashboardPageContainer>
+      </DashboardLayout>
+    );
+  }
+
+  if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
+    return (
+      <DashboardLayout>
+        <DashboardPageContainer>
+          <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-950/20 text-rose-600 mb-4">
+              <Plus className="h-8 w-8 text-rose-600" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-850 dark:text-slate-150">Access Denied</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-sm">
+              Course creation is restricted to administrators. You do not have permissions to view this resource.
+            </p>
+          </div>
+        </DashboardPageContainer>
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <Navbar />
-
-      <div className="flex flex-1">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-6 font-sans">
+    <DashboardLayout>
+      <DashboardPageContainer>
           <div className="flex items-center gap-4">
             <Link
               href="/dashboard/courses"
@@ -119,8 +177,7 @@ export default function NewCoursePage() {
               </div>
             </form>
           </div>
-        </main>
-      </div>
-    </div>
+        </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

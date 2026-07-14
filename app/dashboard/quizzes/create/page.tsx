@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/axios";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import QuizForm from "@/components/quizzes/QuizForm";
 import { PlusCircle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -62,13 +62,8 @@ export default function CreateQuizPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
-      <Navbar />
-
-      <div className="flex">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-6">
+    <DashboardLayout>
+      <DashboardPageContainer maxWidth="max-w-4xl">
           {/* Header */}
           <div className="mb-4">
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
@@ -95,8 +90,7 @@ export default function CreateQuizPage() {
               />
             </div>
           )}
-        </main>
-      </div>
-    </div>
+        </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

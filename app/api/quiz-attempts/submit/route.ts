@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/auth";
 import { getAuthorizedUser } from "@/lib/authorization";
 import { submitAttemptSchema } from "@/lib/validations/quizAttempt";
+import { logAction } from "@/lib/services/audit-service";
 
 /**
  * @swagger
@@ -173,6 +174,19 @@ export async function POST(req: NextRequest) {
         percentage,
         passed,
       },
+    });
+
+    await logAction({
+      req,
+      userId: user.id,
+      instituteId: user.instituteId || "global",
+      action: "SUBMIT",
+      module: "QUIZZES",
+      entityType: "QuizAttempt",
+      entityId: updatedAttempt.id,
+      description: `Quiz attempt submitted: "${attempt.quiz.title}" (Score: ${totalScore}/${totalMarks})`,
+      newValues: updatedAttempt,
+      status: "SUCCESS",
     });
 
     return NextResponse.json(

@@ -107,16 +107,18 @@ export async function GET(
     // Clean up questions & answers if student is requesting an in-progress attempt
     const questions = attempt.quiz.questions.map((q) => {
       if (isStudent && isInProgress) {
-        const { correctAnswers, ...rest } = q;
-        return rest;
+        const qCopy = { ...q } as any;
+        delete qCopy.correctAnswers;
+        return qCopy;
       }
       return q;
     });
 
     const answers = attempt.answers.map((ans) => {
       if (isStudent && isInProgress) {
-        const { isCorrect, ...rest } = ans;
-        return rest;
+        const ansCopy = { ...ans } as any;
+        delete ansCopy.isCorrect;
+        return ansCopy;
       }
       return ans;
     });

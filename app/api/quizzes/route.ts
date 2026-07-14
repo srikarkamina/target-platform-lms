@@ -133,6 +133,9 @@ import { authenticateRequest } from "@/lib/auth";
 import { getAuthorizedUser, authorizeCourseAccess } from "@/lib/authorization";
 import { createQuizSchema } from "@/lib/validations/quiz";
 import { Prisma } from "@/app/generated/prisma/client";
+import { notifyQuizPublished } from "@/lib/services/notification-service";
+import { logAction } from "@/lib/services/audit-service";
+
 
 export async function GET(req: NextRequest) {
   try {
@@ -329,6 +332,51 @@ export async function POST(req: NextRequest) {
           orderBy: { order: "asc" },
         },
       },
+    });
+
+    if (quiz.isPublished) {
+      try {
+        const enrollments = await prisma.enrollment.findMany({
+          where: {
+            batch: {
+              courseId: quiz.courseId,
+              deletedAt: null,
+            },
+            student: {
+              deletedAt: null,
+            },
+          },
+          select: {
+            studentId: true,
+          },
+        });
+
+        const studentIds = enrollments.map((e) => e.studentId);
+        if (studentIds.length > 0) {
+          await notifyQuizPublished({
+            userIds: studentIds,
+            instituteId: quiz.instituteId,
+            title: "New Quiz Published",
+            message: `A new quiz "${quiz.title}" has been published for your course "${course.title}".`,
+            actionUrl: `/dashboard/quizzes/${quiz.id}`,
+          });
+        }
+      } catch (notificationError) {
+        console.error("[NOTIFICATION FAILURE] Failed to notify students of quiz publication:", notificationError);
+      }
+    }
+
+    await logAction({
+      req,
+      userId: user.id,
+      instituteId: course.instituteId,
+      action: "CREATE",
+      module: "QUIZZES",
+      entityType: "Quiz",
+      entityId: quiz.id,
+      description: `Quiz created: ${quiz.title} for course ${course.title}`,
+      newValues: quiz,
+      status: "SUCCESS",
     });
 
     return NextResponse.json(quiz, { status: 201 });

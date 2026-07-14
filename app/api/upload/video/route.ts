@@ -50,6 +50,7 @@ import { authenticateRequest } from "@/lib/auth";
 import { uploadFile, getPublicUrl } from "@/lib/supabase";
 import { uploadVideoSchema } from "@/lib/validations/video";
 import { getAuthorizedUser } from "@/lib/authorization";
+import { SubscriptionService } from "@/lib/services/subscription-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -101,6 +102,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Verify storage quota limit
+    const canUpload = await SubscriptionService.checkStorageLimit(instituteId, file.size);
+    if (!canUpload) {
+      return NextResponse.json(
+        { message: "Storage quota exceeded for this subscription plan. Please upgrade." },
+        { status: 400 }
+      );
+    }
+
     // 4. Validate file using uploadVideoSchema
     const validationResult = uploadVideoSchema.safeParse({
       fileName: file.name,
@@ -128,6 +138,12 @@ export async function POST(req: NextRequest) {
 
     // Get public URL
     const publicUrl = getPublicUrl(bucketName, storagePath);
+
+    try {
+      await SubscriptionService.takeUsageSnapshot(instituteId);
+    } catch (snapshotErr) {
+      console.error("Failed to record usage snapshot on video upload:", snapshotErr);
+    }
 
     return NextResponse.json(
       {

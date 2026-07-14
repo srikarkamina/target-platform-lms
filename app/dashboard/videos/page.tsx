@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import api from "@/lib/axios";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import VideoList from "@/components/videos/VideoList";
 import { Plus, Search, Filter } from "lucide-react";
 import toast from "react-hot-toast";
@@ -87,13 +87,8 @@ export default function VideosPage() {
   }, [searchQuery, selectedCourseId, fetchVideos]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-
-      <div className="flex">
-        <Sidebar />
-
-        <div className="flex-1 p-8">
+    <DashboardLayout>
+      <DashboardPageContainer>
           {/* Header */}
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -157,8 +152,7 @@ export default function VideosPage() {
             onDelete={handleDelete}
             loading={loading}
           />
-        </div>
-      </div>
-    </div>
+      </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

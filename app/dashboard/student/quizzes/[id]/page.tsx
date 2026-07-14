@@ -3,8 +3,8 @@
 import { use, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/axios";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import { Clock, ChevronLeft, ChevronRight, CheckSquare, AlertTriangle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -146,16 +146,12 @@ export default function TakeQuizPage({ params }: { params: Promise<{ id: string 
 
   if (loading || !attempt) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-        <Navbar />
-        <div className="flex flex-1">
-          <Sidebar />
-          <main className="flex-1 flex flex-col items-center justify-center p-12">
+      <DashboardLayout>
+      <DashboardPageContainer>
             <Loader2 className="h-10 w-10 text-indigo-600 animate-spin mb-4" />
             <p className="text-sm font-semibold text-slate-600">Loading quiz content & parameters...</p>
-          </main>
-        </div>
-      </div>
+          </DashboardPageContainer>
+    </DashboardLayout>
     );
   }
 
@@ -215,13 +211,8 @@ export default function TakeQuizPage({ params }: { params: Promise<{ id: string 
   const isLowTime = timeLeft !== null && timeLeft < 60; // Less than 1 minute
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-      <Navbar />
-
-      <div className="flex flex-1">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-6">
+    <DashboardLayout>
+      <DashboardPageContainer>
           {/* Header Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
             <div>
@@ -455,8 +446,7 @@ export default function TakeQuizPage({ params }: { params: Promise<{ id: string 
               </div>
             </div>
           )}
-        </main>
-      </div>
-    </div>
+        </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

@@ -4,14 +4,13 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/axios";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import { 
   ArrowLeft, 
   FileText, 
   Calendar, 
   ExternalLink, 
-  Loader2, 
   AlertCircle,
   MessageSquare,
   Award,
@@ -93,27 +92,20 @@ export default function StudentSubmissionDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-50 font-sans animate-pulse">
-        <Navbar />
-        <div className="flex flex-1">
-          <Sidebar />
-          <main className="flex-1 p-8 space-y-6">
+      <DashboardLayout>
+      <DashboardPageContainer>
             <div className="h-6 w-32 bg-slate-200 rounded-md"></div>
             <div className="h-40 w-full bg-slate-200 rounded-2xl"></div>
             <div className="h-40 w-full bg-slate-200 rounded-2xl"></div>
-          </main>
-        </div>
-      </div>
+          </DashboardPageContainer>
+    </DashboardLayout>
     );
   }
 
   if (error || !submission) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-        <Navbar />
-        <div className="flex flex-1">
-          <Sidebar />
-          <main className="flex-1 p-8 flex flex-col items-center justify-center">
+      <DashboardLayout>
+      <DashboardPageContainer>
             <AlertCircle className="h-12 w-12 text-slate-400 mb-3" />
             <h3 className="text-lg font-bold text-slate-800">Submission Error</h3>
             <p className="text-sm text-slate-550 mt-1 mb-5">{error || "Submission not found."}</p>
@@ -124,20 +116,14 @@ export default function StudentSubmissionDetailPage() {
               <ArrowLeft className="h-4 w-4" />
               <span>Back to Submissions</span>
             </Link>
-          </main>
-        </div>
-      </div>
+          </DashboardPageContainer>
+    </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-      <Navbar />
-
-      <div className="flex flex-1">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-6">
+    <DashboardLayout>
+      <DashboardPageContainer>
           {/* Back button */}
           <div>
             <Link
@@ -252,8 +238,7 @@ export default function StudentSubmissionDetailPage() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+        </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

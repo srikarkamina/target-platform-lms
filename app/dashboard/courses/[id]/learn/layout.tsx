@@ -195,7 +195,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
   }
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-white border-r border-slate-200 text-slate-700 w-80 shrink-0">
+    <div className="flex flex-col h-full bg-white border-r border-slate-200 text-slate-707 w-72 sm:w-80 shrink-0">
       {/* Course Completion percentage */}
       <div className="p-5 border-b border-slate-200 bg-slate-50/60">
         <div className="flex items-center justify-between mb-2">

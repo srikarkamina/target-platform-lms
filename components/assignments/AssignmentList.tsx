@@ -254,7 +254,7 @@ export default function AssignmentList({ courseId }: AssignmentListProps) {
       {/* CREATE MODAL */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-bold text-lg text-slate-800">Create New Assignment</h3>
               <button
@@ -264,7 +264,7 @@ export default function AssignmentList({ courseId }: AssignmentListProps) {
                 &times;
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1">
               <AssignmentForm
                 courses={courses}
                 courseIdFixed={courseId}
@@ -280,7 +280,7 @@ export default function AssignmentList({ courseId }: AssignmentListProps) {
       {/* EDIT MODAL */}
       {isEditOpen && selectedAssignment && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-bold text-lg text-slate-800">Edit Assignment</h3>
               <button
@@ -293,7 +293,7 @@ export default function AssignmentList({ courseId }: AssignmentListProps) {
                 &times;
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1">
               <AssignmentForm
                 initialData={selectedAssignment}
                 courses={courses}

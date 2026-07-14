@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/axios";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import VideoForm from "@/components/videos/VideoForm";
 import Link from "next/link";
 import { ArrowLeft, Film } from "lucide-react";
@@ -67,11 +67,8 @@ export default function CreateVideoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-8 max-w-4xl">
+    <DashboardLayout>
+      <DashboardPageContainer maxWidth="max-w-4xl">
           <div className="mb-6 flex items-center gap-4">
             <Link
               href="/dashboard/videos"
@@ -116,8 +113,7 @@ export default function CreateVideoPage() {
               />
             )}
           </div>
-        </main>
-      </div>
-    </div>
+        </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

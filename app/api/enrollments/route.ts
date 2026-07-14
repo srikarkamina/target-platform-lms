@@ -9,6 +9,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { notifyCourseEnrolled } from "@/lib/services/notification-service";
 
 export async function GET() {
   try {
@@ -46,6 +47,26 @@ export async function POST(req: NextRequest) {
         batchId,
       },
     });
+
+    // Fetch batch and course details to notify student
+    const batch = await prisma.batch.findUnique({
+      where: { id: batchId },
+      include: { course: true },
+    });
+
+    if (batch?.course) {
+      try {
+        await notifyCourseEnrolled({
+          userIds: studentId,
+          instituteId: batch.course.instituteId,
+          title: "Enrolled in Course",
+          message: `You have been enrolled in the course "${batch.course.title}".`,
+          actionUrl: `/dashboard/courses/${batch.course.id}`,
+        });
+      } catch (notificationError) {
+        console.error("[NOTIFICATION FAILURE] Failed to send enrollment notification:", notificationError);
+      }
+    }
 
     return NextResponse.json(enrollment, {
       status: 201,

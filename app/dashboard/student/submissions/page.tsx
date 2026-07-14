@@ -4,19 +4,16 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/axios";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import { 
   ClipboardList, 
   Search, 
   Filter, 
   BookOpen, 
-  CheckCircle, 
-  Clock, 
   ArrowRight, 
   Loader2, 
   AlertCircle,
-  FileText,
   MessageSquare
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -106,10 +103,7 @@ export default function StudentSubmissionsPage() {
     return course ? course.courseCode : "COURSE";
   };
 
-  const getCourseTitle = (courseId: string) => {
-    const course = courses.find((c) => c.id === courseId);
-    return course ? course.title : "Unknown Course";
-  };
+
 
   // Filter local data
   const filteredSubmissions = submissions.filter((sub) => {
@@ -128,13 +122,8 @@ export default function StudentSubmissionsPage() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-      <Navbar />
-
-      <div className="flex flex-1">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-6">
+    <DashboardLayout>
+      <DashboardPageContainer>
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -291,8 +280,7 @@ export default function StudentSubmissionsPage() {
               </div>
             </div>
           )}
-        </main>
-      </div>
-    </div>
+        </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

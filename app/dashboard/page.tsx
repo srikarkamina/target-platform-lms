@@ -1,67 +1,88 @@
 "use client";
 
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
-import { Sparkles, Calendar, BookOpen, Clock } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
+import dynamic from "next/dynamic";
+import LoadingState from "@/components/common/LoadingState";
+import { Loader2 } from "lucide-react";
+
+const AdminDashboard = dynamic(() => import("@/components/dashboard/AdminDashboard"), {
+  loading: () => <LoadingState message="Loading Admin workspace..." />,
+});
+const FacultyDashboard = dynamic(() => import("@/components/dashboard/FacultyDashboard"), {
+  loading: () => <LoadingState message="Loading Faculty workspace..." />,
+});
+const StudentDashboard = dynamic(() => import("@/components/dashboard/StudentDashboard"), {
+  loading: () => <LoadingState message="Loading Student workspace..." />,
+});
 
 export default function Dashboard() {
+  const router = useRouter();
+  const [role, setRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const parseJwt = (token: string) => {
+    try {
+      const base64Url = token.split(".")[1];
+      if (!base64Url) return null;
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        window
+          .atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      return JSON.parse(jsonPayload);
+    } catch {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    const payload = parseJwt(token);
+    if (payload && payload.role) {
+      if (payload.role === "SUPER_ADMIN") {
+        router.push("/dashboard/super-admin");
+        return;
+      }
+      setRole(payload.role);
+    } else {
+      router.push("/login");
+    }
+    setLoading(false);
+  }, [router]);
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <Navbar />
-
-      <div className="flex flex-1">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-8 font-sans">
-          {/* Hero Welcome Banner */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-start gap-4">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-              <Sparkles className="h-6 w-6" />
-            </span>
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                Welcome to TARGET Platform 🚀
-              </h1>
-              <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                You are logged into your centralized learning space. Navigate through courses, track progress, review lecture materials, and manage course assets using the sidebar menu.
-              </p>
-            </div>
+    <DashboardLayout>
+      <DashboardPageContainer>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center p-32">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 font-semibold">
+              Loading workspace dashboard...
+            </p>
           </div>
-
-          {/* Quick Info Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                <BookOpen className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Courses</p>
-                <h3 className="text-lg font-bold text-slate-800 mt-0.5">Academic Track</h3>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                <Clock className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Videos</p>
-                <h3 className="text-lg font-bold text-slate-800 mt-0.5">Lessons & Playback</h3>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-                <Calendar className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Timeline</p>
-                <h3 className="text-lg font-bold text-slate-800 mt-0.5">2026 Academic Year</h3>
-              </div>
-            </div>
+        ) : role === "ADMIN" || role === "SUPER_ADMIN" ? (
+          <AdminDashboard />
+        ) : role === "FACULTY" ? (
+          <FacultyDashboard />
+        ) : role === "STUDENT" ? (
+          <StudentDashboard />
+        ) : (
+          <div className="text-center p-12 text-slate-500 dark:text-slate-400">
+            Unauthorized role structure. Please log in again.
           </div>
-        </main>
-      </div>
-    </div>
+        )}
+      </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

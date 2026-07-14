@@ -77,6 +77,7 @@ import { authenticateRequest } from "@/lib/auth";
 import { createVideoSchema } from "@/lib/validations/video";
 import { Prisma } from "@/app/generated/prisma/client";
 import { getAuthorizedUser, authorizeCourseAccess } from "@/lib/authorization";
+import { logAction } from "@/lib/services/audit-service";
 
 export async function GET(req: NextRequest) {
   try {
@@ -219,6 +220,19 @@ export async function POST(req: NextRequest) {
         courseId,
         published: true, // Default to published on creation
       },
+    });
+
+    await logAction({
+      req,
+      userId: auth.user?.id || null,
+      instituteId: auth.user?.instituteId || "global",
+      action: "UPLOAD",
+      module: "VIDEOS",
+      entityType: "Video",
+      entityId: video.id,
+      description: `Video uploaded: ${video.title} for course ${auth.course?.courseCode || ""}`,
+      newValues: video,
+      status: "SUCCESS",
     });
 
     return NextResponse.json(video, { status: 201 });

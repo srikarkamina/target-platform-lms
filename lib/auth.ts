@@ -1,14 +1,14 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
+import { env } from "./env";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "target_super_secret_key";
+const JWT_SECRET = env.JWT_SECRET;
 
 export interface JWTPayload {
   id: string;
   email: string;
   role: string;
-  instituteId?: string;
+  instituteId?: string | null;
 }
 
 export function generateToken(payload: JWTPayload) {

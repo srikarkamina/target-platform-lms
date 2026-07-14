@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
+import FileAttachmentCard from "@/components/common/FileAttachmentCard";
 import { 
   Calendar, 
   Clock, 
@@ -14,7 +15,6 @@ import {
   FileText, 
   CheckCircle, 
   AlertCircle, 
-  ExternalLink, 
   Loader2, 
   GraduationCap 
 } from "lucide-react";
@@ -50,7 +50,6 @@ const MAX_FILE_SIZE = 300 * 1024 * 1024; // 300MB
 
 export default function StudentAssignmentPage() {
   const params = useParams();
-  const router = useRouter();
   const assignmentId = params.id as string;
 
   const [assignment, setAssignment] = useState<Assignment | null>(null);
@@ -61,6 +60,7 @@ export default function StudentAssignmentPage() {
 
   // File Input State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isReplacingFile, setIsReplacingFile] = useState(false);
 
   // Decode JWT to get Student ID
   const parseJwt = (token: string) => {
@@ -197,6 +197,7 @@ export default function StudentAssignmentPage() {
       }
 
       setSelectedFile(null);
+      setIsReplacingFile(false);
       fetchData();
     } catch (err) {
       console.error("[CLIENT ASSIGNMENT PAGE] Submission failed with error:", err);
@@ -238,11 +239,8 @@ export default function StudentAssignmentPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-50">
-        <Navbar />
-        <div className="flex flex-1">
-          <Sidebar />
-          <main className="flex-1 p-8 space-y-6 font-sans">
+      <DashboardLayout>
+      <DashboardPageContainer>
             <div className="h-6 w-32 bg-slate-200 rounded-md animate-pulse"></div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-4">
@@ -252,19 +250,15 @@ export default function StudentAssignmentPage() {
               </div>
               <div className="h-64 bg-slate-200 rounded-2xl animate-pulse"></div>
             </div>
-          </main>
-        </div>
-      </div>
+          </DashboardPageContainer>
+    </DashboardLayout>
     );
   }
 
   if (!assignment) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-50">
-        <Navbar />
-        <div className="flex flex-1">
-          <Sidebar />
-          <main className="flex-1 p-8 flex flex-col items-center justify-center font-sans">
+      <DashboardLayout>
+      <DashboardPageContainer>
             <AlertCircle className="h-12 w-12 text-slate-350 mb-3" />
             <h3 className="text-lg font-bold text-slate-800">Assignment Not Found</h3>
             <p className="text-sm text-slate-550 mt-1 mb-5">This coursework assignment does not exist or has been deleted.</p>
@@ -275,20 +269,14 @@ export default function StudentAssignmentPage() {
               <ArrowLeft className="h-4 w-4" />
               <span>Back to Assignments</span>
             </Link>
-          </main>
-        </div>
-      </div>
+          </DashboardPageContainer>
+    </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <Navbar />
-
-      <div className="flex flex-1">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-6 font-sans">
+    <DashboardLayout>
+      <DashboardPageContainer>
           {/* Back link */}
           <div>
             <Link
@@ -357,46 +345,40 @@ export default function StudentAssignmentPage() {
                     <p className="text-[10px] uppercase font-extrabold text-emerald-800 tracking-widest font-mono">Grade Assigned</p>
                     <h2 className="text-3xl font-black text-emerald-800 mt-1">{submission.grade} / 100</h2>
                   </div>
-                )}
-
-                {/* Submission File Info */}
-                {submission && (
-                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2 text-xs text-slate-655">
+                )}                {/* Submission File Info */}
+                {submission && !isReplacingFile && (
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-500 uppercase tracking-wide">Submitted File:</span>
-                      <a
-                        href={submission.fileUrl || "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        download
-                        className="text-indigo-600 hover:underline flex items-center gap-0.5 font-bold"
-                        title="Download uploaded file"
-                      >
-                        <span>Download</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
+                      <span className="font-bold text-slate-500 uppercase tracking-wide text-xs">Attached Work</span>
+                      {submission.grade === null && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsReplacingFile(true);
+                            setSelectedFile(null);
+                          }}
+                          className="text-rose-600 hover:text-rose-800 font-bold hover:underline shrink-0 bg-transparent border-none cursor-pointer text-xs"
+                        >
+                          Remove File
+                        </button>
+                      )}
                     </div>
-                    <p className="truncate font-semibold text-slate-800 flex items-center gap-1.5">
-                      <FileText className="h-4.5 w-4.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{submission.fileName || "Submitted assignment"}</span>
-                    </p>
-                    {submission.fileSize && (
-                      <p className="text-[10px] text-slate-450">
-                        Size: {(submission.fileSize / (1024 * 1024)).toFixed(2)} MB
-                      </p>
-                    )}
-                    <p className="text-[10px] text-slate-400">
-                      Submitted on: {new Date(submission.submittedAt).toLocaleString()}
-                    </p>
+                    <FileAttachmentCard
+                      fileName={submission.fileName}
+                      fileUrl={submission.fileUrl}
+                      fileSize={submission.fileSize}
+                      submittedAt={submission.submittedAt}
+                      mimeType={submission.mimeType}
+                    />
                   </div>
                 )}
 
                 {/* Form to submit / edit */}
-                {(!submission || submission.grade === null) && (
+                {(!submission || (submission.grade === null && isReplacingFile)) && (
                   <form onSubmit={handleUploadAndSubmit} className="space-y-4 pt-2">
                     <div className="space-y-1">
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Attachment *
+                        {submission ? "New File" : "Attachment *"}
                       </label>
                       <label className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50 hover:bg-slate-100/70 p-6 transition-colors cursor-pointer text-xs font-semibold text-slate-600">
                         <FileText className="h-6 w-6 text-slate-400" />
@@ -425,14 +407,29 @@ export default function StudentAssignmentPage() {
                       )}
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={!selectedFile || submitting}
-                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 py-3 text-xs font-extrabold text-white shadow-sm transition-colors cursor-pointer disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed border-none"
-                    >
-                      {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                      <span>{submission ? "Update Submission" : "Upload Assignment"}</span>
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={!selectedFile || submitting}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 py-3 text-xs font-extrabold text-white shadow-sm transition-colors cursor-pointer disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed border-none"
+                      >
+                        {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                        <span>{submission ? "Update Submission" : "Upload Assignment"}</span>
+                      </button>
+                      
+                      {submission && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsReplacingFile(false);
+                            setSelectedFile(null);
+                          }}
+                          className="rounded-xl border border-slate-205 bg-white hover:bg-slate-50 text-slate-700 px-4 py-3 text-xs font-bold transition-all shadow-sm cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
                   </form>
                 )}
 
@@ -444,8 +441,7 @@ export default function StudentAssignmentPage() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+        </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

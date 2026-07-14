@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createAssignmentSchema } from "@/lib/validations/assignment";
+import { notifyAssignmentCreated } from "@/lib/services/notification-service";
+import { authenticateRequest } from "@/lib/auth";
+import { getAuthorizedUser } from "@/lib/authorization";
+import { logAction } from "@/lib/services/audit-service";
+
 
 export async function GET(req: NextRequest) {
   try {
@@ -85,6 +90,52 @@ export async function POST(req: NextRequest) {
         dueDate,
         courseId,
       },
+    });
+
+    // Notify enrolled students of assignment creation
+    try {
+      const enrollments = await prisma.enrollment.findMany({
+        where: {
+          batch: {
+            courseId,
+            deletedAt: null,
+          },
+          student: {
+            deletedAt: null,
+          },
+        },
+        select: {
+          studentId: true,
+        },
+      });
+
+      const studentIds = enrollments.map((e) => e.studentId);
+      if (studentIds.length > 0) {
+        await notifyAssignmentCreated({
+          userIds: studentIds,
+          instituteId: courseExists.instituteId,
+          title: "New Assignment",
+          message: `A new assignment "${title}" has been created for your course "${courseExists.title}".`,
+          actionUrl: `/dashboard/assignments/${assignment.id}`,
+        });
+      }
+    } catch (notificationError) {
+      console.error("[NOTIFICATION FAILURE] Failed to notify students of assignment creation:", notificationError);
+    }
+
+    const payload = await authenticateRequest(req);
+    const user = payload ? await getAuthorizedUser(payload) : null;
+    await logAction({
+      req,
+      userId: user?.id || null,
+      instituteId: courseExists.instituteId,
+      action: "CREATE",
+      module: "ASSIGNMENTS",
+      entityType: "Assignment",
+      entityId: assignment.id,
+      description: `Assignment created: ${assignment.title} for course ${courseExists.title}`,
+      newValues: assignment,
+      status: "SUCCESS",
     });
 
     return NextResponse.json(assignment, { status: 201 });

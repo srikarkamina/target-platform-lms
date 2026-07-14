@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/axios";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import toast from "react-hot-toast";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import VideoUpload from "@/components/videos/VideoUpload";
 import AssignmentList from "@/components/assignments/AssignmentList";
+import DiscussionBoard from "@/components/courses/DiscussionBoard";
 
 // ─── Type Definitions ───────────────────────────────────────────────────────
 
@@ -59,7 +61,7 @@ interface Enrollment {
   };
 }
 
-type Tab = "info" | "videos" | "materials" | "students" | "assignments";
+type Tab = "info" | "videos" | "materials" | "students" | "assignments" | "discussions";
 
 const MATERIAL_TYPES = [
   "PDF",
@@ -99,6 +101,37 @@ export default function CourseDetailPage() {
 
   // ── Tab State ────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<Tab>("info");
+  const [role, setRole] = useState<string>("STUDENT");
+  const [userId, setUserId] = useState<string>("");
+
+  const parseJwt = (token: string) => {
+    try {
+      const base64Url = token.split(".")[1];
+      if (!base64Url) return null;
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        window
+          .atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      return JSON.parse(jsonPayload);
+    } catch {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const payload = parseJwt(token);
+      if (payload) {
+        setRole(payload.role || "STUDENT");
+        setUserId(payload.id || "");
+      }
+    }
+  }, []);
 
   // ── Course Info State ────────────────────────────────────────────────────
   const [course, setCourse] = useState<Course | null>(null);
@@ -244,10 +277,10 @@ export default function CourseDetailPage() {
         description,
         courseCode,
       });
-      alert("Course updated successfully.");
+      toast.success("Course updated successfully.");
     } catch (err) {
       console.error(err);
-      alert("Failed to update course.");
+      toast.error("Failed to update course.");
     } finally {
       setInfoSaving(false);
     }
@@ -262,11 +295,11 @@ export default function CourseDetailPage() {
 
     try {
       await api.delete(`/courses/${courseId}`);
-      alert("Course deleted.");
+      toast.success("Course deleted successfully.");
       router.push("/dashboard/courses");
     } catch (err) {
       console.error(err);
-      alert("Failed to delete course.");
+      toast.error("Failed to delete course.");
     }
   };
 
@@ -343,7 +376,7 @@ export default function CourseDetailPage() {
       fetchVideos();
     } catch (err) {
       console.error(err);
-      alert("Failed to save video.");
+      toast.error("Failed to save video.");
     } finally {
       setVideoSaving(false);
     }
@@ -363,7 +396,7 @@ export default function CourseDetailPage() {
       fetchVideos();
     } catch (err) {
       console.error(err);
-      alert("Failed to delete video.");
+      toast.error("Failed to delete video.");
     }
   };
 
@@ -421,7 +454,7 @@ export default function CourseDetailPage() {
       fetchMaterials();
     } catch (err) {
       console.error(err);
-      alert("Failed to save material.");
+      toast.error("Failed to save material.");
     } finally {
       setMaterialSaving(false);
     }
@@ -443,7 +476,7 @@ export default function CourseDetailPage() {
       fetchMaterials();
     } catch (err) {
       console.error(err);
-      alert("Failed to delete material.");
+      toast.error("Failed to delete material.");
     }
   };
 
@@ -451,39 +484,31 @@ export default function CourseDetailPage() {
 
   if (infoLoading) {
     return (
-      <div>
-        <Navbar />
-        <div className="flex">
-          <Sidebar />
-          <div className="flex-1 p-6">
-            <p className="text-gray-500">
-              Loading course...
-            </p>
-          </div>
-        </div>
-      </div>
+      <DashboardLayout>
+        <DashboardPageContainer>
+          <p className="text-gray-500">
+            Loading course...
+          </p>
+        </DashboardPageContainer>
+      </DashboardLayout>
     );
   }
 
   if (!course) {
     return (
-      <div>
-        <Navbar />
-        <div className="flex">
-          <Sidebar />
-          <div className="flex-1 p-6">
-            <p className="text-red-500">
-              Course not found.
-            </p>
-            <Link
-              href="/dashboard/courses"
-              className="mt-4 inline-block text-blue-600 hover:underline"
-            >
-              ← Back to Courses
-            </Link>
-          </div>
-        </div>
-      </div>
+      <DashboardLayout>
+        <DashboardPageContainer>
+          <p className="text-red-500">
+            Course not found.
+          </p>
+          <Link
+            href="/dashboard/courses"
+            className="mt-4 inline-block text-blue-600 hover:underline"
+          >
+            ← Back to Courses
+          </Link>
+        </DashboardPageContainer>
+      </DashboardLayout>
     );
   }
 
@@ -493,16 +518,12 @@ export default function CourseDetailPage() {
     { key: "materials", label: "📄 Materials" },
     { key: "students", label: "👥 Students" },
     { key: "assignments", label: "📝 Assignments" },
+    { key: "discussions", label: "💬 Discussions" },
   ];
 
   return (
-    <div>
-      <Navbar />
-
-      <div className="flex">
-        <Sidebar />
-
-        <div className="flex-1 p-6">
+    <DashboardLayout>
+      <DashboardPageContainer>
           {/* Page Header */}
           <div className="mb-6 flex items-center gap-4">
             <Link
@@ -560,6 +581,7 @@ export default function CourseDetailPage() {
                     className="w-full rounded border p-2"
                     placeholder="Title"
                     required
+                    disabled={role === "FACULTY" || role === "STUDENT"}
                   />
                 </div>
 
@@ -576,6 +598,7 @@ export default function CourseDetailPage() {
                     className="w-full rounded border p-2"
                     placeholder="e.g. JAVA102"
                     required
+                    disabled={role === "FACULTY" || role === "STUDENT"}
                   />
                 </div>
 
@@ -592,26 +615,29 @@ export default function CourseDetailPage() {
                     className="w-full rounded border p-2"
                     rows={4}
                     placeholder="Course description..."
+                    disabled={role === "FACULTY" || role === "STUDENT"}
                   />
                 </div>
 
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    disabled={infoSaving}
-                    className="rounded bg-green-600 px-4 py-2 text-white disabled:opacity-60"
-                  >
-                    {infoSaving ? "Saving..." : "Update"}
-                  </button>
+                {role !== "FACULTY" && role !== "STUDENT" && (
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={infoSaving}
+                      className="rounded bg-green-600 px-4 py-2 text-white disabled:opacity-60"
+                    >
+                      {infoSaving ? "Saving..." : "Update"}
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={handleDeleteCourse}
-                    className="rounded bg-red-600 px-4 py-2 text-white"
-                  >
-                    Delete Course
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={handleDeleteCourse}
+                      className="rounded bg-red-600 px-4 py-2 text-white"
+                    >
+                      Delete Course
+                    </button>
+                  </div>
+                )}
               </form>
             </div>
           )}
@@ -1234,8 +1260,14 @@ export default function CourseDetailPage() {
               <AssignmentList courseId={courseId} />
             </div>
           )}
-        </div>
-      </div>
-    </div>
+
+          {/* ── Tab: Discussions ─────────────────────────── */}
+          {activeTab === "discussions" && (
+            <div className="mt-4">
+              <DiscussionBoard courseId={courseId} role={role} userId={userId} />
+            </div>
+          )}
+      </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

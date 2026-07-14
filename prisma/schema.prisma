@@ -12,14 +12,36 @@ model Institute {
   id        String    @id @default(uuid())
   name      String
   logo      String?
-  status    Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  status       InstituteStatus @default(ACTIVE)
+  isDeleted    Boolean         @default(false)
+  suspendedAt  DateTime?
+  suspendedBy  String?
+  lastActiveAt DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  deletedAt    DateTime?
   courses   Course[]
   payments  Payment[]
-  users     User[]
-  quizzes   Quiz[]
+  users                User[]
+  quizzes              Quiz[]
+  certificates         Certificate[]
+  certificateTemplates CertificateTemplate[]
+  notifications        Notification[]
+  settings             InstituteSettings?
+  auditLogs            AuditLog[]
+  emailTemplates       EmailTemplate[]
+  emailHistories       EmailHistory[]
+  subscription         Subscription?
+  usageSnapshots       UsageSnapshot[]
+  announcements        Announcement[]
+  discussions          Discussion[]
+  discussionReplies    DiscussionReply[]
+  discussionLikes      DiscussionLike[]
+  doubts               Doubt[]
+  doubtReplies         DoubtReply[]
+  feedbacks            Feedback[]
+  polls                Poll[]
+  events               Event[]
 
   @@index([deletedAt])
 }
@@ -42,8 +64,25 @@ model User {
   submissions    Submission[]
   quizzesCreated Quiz[]        @relation("CreatedQuizzes")
   quizAttempts   QuizAttempt[] @relation("StudentQuizAttempts")
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  emailHistories       EmailHistory[]
+  announcementsCreated Announcement[]
+  discussionsCreated   Discussion[]
+  discussionReplies    DiscussionReply[]
+  discussionLikes      DiscussionLike[]
+  assignedDoubts       Doubt[]               @relation("AssignedDoubts")
+  createdDoubts        Doubt[]               @relation("CreatedDoubts")
+  doubtReplies         DoubtReply[]
+  facultyFeedbacks     Feedback[]            @relation("FacultyFeedback")
+  userFeedbacks        Feedback[]            @relation("UserFeedback")
+  pollsCreated         Poll[]
+  pollVotes            PollVote[]
+  eventsCreated        Event[]
+  eventRegistrations   EventRegistration[]
 
   @@index([role])
+  @@index([instituteId])
   @@index([deletedAt])
 }
 
@@ -66,6 +105,10 @@ model Course {
   videos       Video[]
   materials    Material[]
   quizzes      Quiz[]
+  announcements Announcement[]
+  discussions   Discussion[]
+  doubts        Doubt[]
+  feedbacks     Feedback[]
 
   @@index([instituteId])
   @@index([facultyId])
@@ -81,7 +124,8 @@ model Batch {
   createdAt   DateTime     @default(now())
   deletedAt   DateTime?
   course      Course       @relation(fields: [courseId], references: [id])
-  enrollments Enrollment[]
+  enrollments   Enrollment[]
+  announcements Announcement[]
 
   @@index([courseId])
   @@index([deletedAt])
@@ -187,21 +231,57 @@ model Test {
   @@index([deletedAt])
 }
 
-model Certificate {
-  id            String            @id @default(uuid())
-  certificateNo String            @unique
-  studentId     String
-  courseId      String
-  qrCodeUrl     String?
-  status        CertificateStatus @default(ACTIVE)
-  issueDate     DateTime
-  createdAt     DateTime          @default(now())
-  deletedAt     DateTime?
-  course        Course            @relation(fields: [courseId], references: [id])
-  student       User              @relation(fields: [studentId], references: [id])
+model CertificateTemplate {
+  id              String    @id @default(uuid())
+  instituteId     String
+  name            String
+  title           String
+  description     String?
+  backgroundImage     String?
+  backgroundImageSize Int?
+  signatureImage      String?
+  signatureImageSize  Int?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
 
+  institute    Institute     @relation(fields: [instituteId], references: [id])
+  certificates Certificate[]
+  defaultSettings InstituteSettings[] @relation("DefaultTemplate")
+
+  @@index([instituteId])
+  @@index([deletedAt])
+}
+
+model Certificate {
+  id                String            @id @default(uuid())
+  instituteId       String
+  studentId         String
+  courseId          String
+  templateId        String
+  certificateNumber String            @unique
+  certificateCode   String            @unique
+  verificationToken String            @unique
+  issueDate         DateTime          @default(now())
+  completionDate    DateTime?
+  certificateUrl    String?
+  fileSize          Int?
+  status            CertificateStatus @default(ACTIVE)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+  revokedAt         DateTime?
+
+  institute Institute           @relation(fields: [instituteId], references: [id])
+  student   User                @relation(fields: [studentId], references: [id])
+  course    Course              @relation(fields: [courseId], references: [id])
+  template  CertificateTemplate @relation(fields: [templateId], references: [id])
+
+  @@index([instituteId])
   @@index([studentId])
   @@index([courseId])
+  @@index([templateId])
   @@index([deletedAt])
 }
 
@@ -227,6 +307,13 @@ enum Role {
 enum CertificateStatus {
   ACTIVE
   REVOKED
+}
+
+enum InstituteStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  EXPIRED
 }
 
 enum MaterialType {
@@ -336,4 +423,602 @@ model QuizAnswer {
 
   @@index([attemptId])
   @@index([questionId])
+}
+
+model Notification {
+  id          String               @id @default(uuid())
+  title       String
+  message     String
+  type        NotificationType
+  priority    NotificationPriority @default(NORMAL)
+  actionUrl   String?
+  expiresAt   DateTime?
+  isRead      Boolean              @default(false)
+  metadata    Json                 @default("{}")
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  deletedAt   DateTime?
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instituteId String
+  institute   Institute            @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([instituteId])
+  @@index([isRead])
+  @@index([deletedAt])
+  @@index([expiresAt])
+  @@index([priority])
+}
+
+enum NotificationType {
+  ASSIGNMENT_CREATED
+  ASSIGNMENT_DUE
+  QUIZ_PUBLISHED
+  QUIZ_DUE
+  COURSE_ENROLLED
+  COURSE_COMPLETED
+  CERTIFICATE_ISSUED
+  CERTIFICATE_REVOKED
+  GENERAL
+  ANNOUNCEMENT_PUBLISHED
+  DISCUSSION_REPLY
+  OFFICIAL_ANSWER
+  DOUBT_ASSIGNED
+  DOUBT_RESOLVED
+  POLL_CREATED
+  POLL_CLOSED
+  EVENT_REMINDER
+  EVENT_REGISTRATION
+  FEEDBACK_RESPONSE
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model InstituteSettings {
+  id                            String   @id @default(uuid())
+  instituteId                   String   @unique
+  
+  // Institute Information
+  name                          String?
+  address                       String?
+  city                          String?
+  state                         String?
+  country                       String?
+  postalCode                    String?
+  phone                         String?
+  email                         String?
+  website                       String?
+  description                   String?
+
+  // Branding
+  logoUrl                       String?
+  logoSize                      Int?
+  bannerUrl                     String?
+  bannerSize                    Int?
+  faviconUrl                    String?
+  faviconSize                   Int?
+  primaryColor                  String   @default("#0f172a")
+  secondaryColor                String   @default("#3b82f6")
+
+  // Certificate Branding
+  defaultSignatureImage         String?
+  defaultSignatureImageSize     Int?
+  defaultSealImage              String?
+  defaultSealImageSize          Int?
+  defaultCertificateTemplateId  String?
+
+  // Localization
+  timezone                      String   @default("UTC")
+  dateFormat                    String   @default("YYYY-MM-DD")
+  language                      String   @default("en")
+
+  // SMTP Configuration
+  smtpHost                      String?
+  smtpPort                      Int?
+  smtpUsername                  String?
+  smtpPassword                  String?
+  smtpEncryption                String?  @default("NONE") // NONE, SSL, TLS
+  smtpSenderName                String?
+  smtpSenderEmail               String?
+  smtpReplyTo                   String?
+  emailNotificationsEnabled     Boolean  @default(false)
+
+  // Metadata
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  institute                     Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  defaultCertificateTemplate    CertificateTemplate? @relation("DefaultTemplate", fields: [defaultCertificateTemplateId], references: [id], onDelete: SetNull)
+
+  @@index([instituteId])
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  instituteId   String
+  userId        String?
+  action        String
+  module        String
+  entityType    String?
+  entityId      String?
+  description   String?
+  oldValues     Json?
+  newValues     Json?
+  ipAddress     String?
+  userAgent     String?
+  requestMethod String?
+  requestPath   String?
+  status        String   @default("SUCCESS")
+  createdAt     DateTime @default(now())
+
+  institute     Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([instituteId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
+  @@index([module])
+}
+
+enum EmailStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  RETRYING
+  CANCELLED
+}
+
+enum EmailType {
+  WELCOME
+  COURSE_ENROLLMENT
+  ASSIGNMENT_CREATED
+  ASSIGNMENT_REMINDER
+  QUIZ_PUBLISHED
+  QUIZ_REMINDER
+  CERTIFICATE_ISSUED
+  PASSWORD_RESET
+  GENERAL
+}
+
+model EmailTemplate {
+  id          String    @id @default(uuid())
+  instituteId String
+  type        EmailType
+  subject     String
+  body        String    @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  institute   Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+
+  @@unique([instituteId, type])
+  @@index([instituteId])
+}
+
+model EmailHistory {
+  id             String      @id @default(uuid())
+  instituteId    String
+  userId         String?
+  recipientEmail String
+  subject        String
+  body           String      @db.Text
+  type           EmailType
+  status         EmailStatus @default(PENDING)
+  retryCount     Int         @default(0)
+  errorMessage   String?
+  sentAt         DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  institute      Institute   @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  user           User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([instituteId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+model SubscriptionPlan {
+  id             String         @id @default(uuid())
+  name           String
+  code           String         @unique
+  price          Float
+  maxStudents    Int?
+  maxFaculty     Int?
+  maxCourses     Int?
+  maxAdmins      Int?
+  storageLimitGB Float?
+  trialDays      Int            @default(14)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  subscriptions  Subscription[]
+}
+
+model Subscription {
+  id           String             @id @default(uuid())
+  instituteId  String             @unique
+  planId       String
+  status       SubscriptionStatus @default(TRIAL)
+  startsAt     DateTime           @default(now())
+  expiresAt    DateTime?
+  trialEndsAt  DateTime?
+  autoRenew    Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  institute    Institute          @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  plan         SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([instituteId])
+  @@index([planId])
+}
+
+model UsageSnapshot {
+  id            String    @id @default(uuid())
+  instituteId   String
+  students      Int
+  faculty       Int
+  admins        Int
+  courses       Int
+  storageUsedMB Float
+  recordedAt    DateTime  @default(now())
+  institute     Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+
+  @@index([instituteId])
+}
+
+enum BackupType {
+  MANUAL
+  SCHEDULED
+  SYSTEM
+}
+
+enum BackupStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model Backup {
+  id          String       @id @default(uuid())
+  type        BackupType   @default(MANUAL)
+  status      BackupStatus @default(PENDING)
+  fileName    String
+  fileSize    Float        // Size in MB
+  createdBy   String       // User ID or "SYSTEM"
+  createdAt   DateTime     @default(now())
+  completedAt DateTime?
+  notes       String?
+}
+
+model Announcement {
+  id             String                   @id @default(uuid())
+  instituteId    String
+  title          String
+  description    String
+  category       String                   // GENERAL, ACADEMIC, EXAM, HOLIDAY, PLACEMENT, EVENTS, EMERGENCY
+  priority       String                   // LOW, MEDIUM, HIGH, CRITICAL
+  publishDate    DateTime                 @default(now())
+  expiryDate     DateTime?
+  active         Boolean                  @default(true)
+  pinned         Boolean                  @default(false)
+  targetAudience String                   // EVERYONE, STUDENTS, FACULTY, COURSE, BATCH
+  courseId       String?
+  batchId        String?
+  createdBy      String
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  deletedAt      DateTime?
+
+  institute      Institute                @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  course         Course?                  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  batch          Batch?                   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  creator        User                     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  attachments    AnnouncementAttachment[]
+
+  @@index([instituteId])
+  @@index([createdBy])
+  @@index([deletedAt])
+  @@index([publishDate])
+}
+
+model AnnouncementAttachment {
+  id             String       @id @default(uuid())
+  announcementId String
+  fileUrl        String
+  fileName       String
+  mimeType       String?
+  fileSize       Int?
+  instituteId    String
+  createdBy      String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@index([announcementId])
+  @@index([deletedAt])
+}
+
+model Discussion {
+  id          String           @id @default(uuid())
+  courseId    String
+  title       String
+  content     String
+  pinned      Boolean          @default(false)
+  locked      Boolean          @default(false)
+  instituteId String
+  createdBy   String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  institute   Institute        @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  creator     User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  replies     DiscussionReply[]
+  likes       DiscussionLike[]
+
+  @@index([courseId])
+  @@index([instituteId])
+  @@index([createdBy])
+  @@index([deletedAt])
+}
+
+model DiscussionReply {
+  id               String            @id @default(uuid())
+  discussionId     String
+  parentId         String?
+  content          String
+  isOfficialAnswer Boolean           @default(false)
+  instituteId      String
+  createdBy        String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  discussion       Discussion        @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  parent           DiscussionReply?  @relation("NestedReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies          DiscussionReply[] @relation("NestedReplies")
+  institute        Institute         @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  creator          User              @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([discussionId])
+  @@index([parentId])
+  @@index([instituteId])
+  @@index([createdBy])
+  @@index([deletedAt])
+}
+
+model DiscussionLike {
+  id           String     @id @default(uuid())
+  discussionId String
+  userId       String
+  instituteId  String
+  createdBy    String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+
+  discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institute    Institute  @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+
+  @@unique([discussionId, userId])
+  @@index([discussionId])
+  @@index([userId])
+  @@index([instituteId])
+  @@index([deletedAt])
+}
+
+model Doubt {
+  id             String       @id @default(uuid())
+  subject        String
+  description    String
+  courseId       String
+  priority       String       // LOW, MEDIUM, HIGH, CRITICAL
+  attachmentUrl  String?
+  attachmentName String?
+  anonymous      Boolean      @default(false)
+  status         String       // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  assignedToId   String?
+  instituteId    String
+  createdBy      String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  course         Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assignedTo     User?        @relation("AssignedDoubts", fields: [assignedToId], references: [id], onDelete: SetNull)
+  creator        User         @relation("CreatedDoubts", fields: [createdBy], references: [id], onDelete: Cascade)
+  institute      Institute    @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  replies        DoubtReply[]
+
+  @@index([courseId])
+  @@index([assignedToId])
+  @@index([createdBy])
+  @@index([instituteId])
+  @@index([deletedAt])
+}
+
+model DoubtReply {
+  id          String    @id @default(uuid())
+  doubtId     String
+  content     String
+  instituteId String
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  doubt       Doubt     @relation(fields: [doubtId], references: [id], onDelete: Cascade)
+  creator     User      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  institute   Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+
+  @@index([doubtId])
+  @@index([instituteId])
+  @@index([createdBy])
+  @@index([deletedAt])
+}
+
+model Feedback {
+  id                 String    @id @default(uuid())
+  type               String    // COURSE, FACULTY, PLATFORM, BUG_REPORT, SUGGESTION
+  courseId           String?
+  facultyId          String?
+  rating             Int?      // 1-5
+  anonymous          Boolean   @default(false)
+  comments           String
+  semester           String?
+  adminResponse      String?
+  adminResponseAt    DateTime?
+  adminResponseById  String?
+  status             String    @default("PENDING")
+  priority           String    @default("NORMAL")
+  category           String    @default("PLATFORM")
+  instituteId        String
+  createdBy          String
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  course      Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  faculty     User?     @relation("FacultyFeedback", fields: [facultyId], references: [id], onDelete: Cascade)
+  creator     User      @relation("UserFeedback", fields: [createdBy], references: [id], onDelete: Cascade)
+  institute   Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+
+  @@index([type])
+  @@index([courseId])
+  @@index([facultyId])
+  @@index([instituteId])
+  @@index([deletedAt])
+}
+
+model Poll {
+  id             String       @id @default(uuid())
+  question       String
+  type           String       // SINGLE_CHOICE, MULTIPLE_CHOICE
+  anonymous      Boolean      @default(false)
+  publicResults  Boolean      @default(true)
+  allowVoteUpdate Boolean     @default(false)
+  expiryDate     DateTime
+  instituteId    String
+  createdBy      String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  creator        User         @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  institute      Institute    @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  options        PollOption[]
+  votes          PollVote[]
+
+   @@index([instituteId])
+  @@index([createdBy])
+  @@index([deletedAt])
+  @@index([expiryDate])
+}
+
+model PollOption {
+  id          String     @id @default(uuid())
+  pollId      String
+  text        String
+  instituteId String
+  createdBy   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  poll        Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes       PollVote[]
+
+  @@index([pollId])
+  @@index([deletedAt])
+}
+
+model PollVote {
+  id          String     @id @default(uuid())
+  pollId      String
+  optionId    String
+  userId      String
+  instituteId String
+  createdBy   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  poll        Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option      PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([pollId])
+  @@index([optionId])
+  @@index([userId])
+  @@index([deletedAt])
+}
+
+model Event {
+  id                  String              @id @default(uuid())
+  title               String
+  description         String
+  venue               String?
+  onlineMeetingLink   String?
+  speaker             String?
+  banner              String?
+  startDate           DateTime
+  endDate             DateTime
+  registrationRequired Boolean             @default(false)
+  capacity            Int?
+  reminderSent        Boolean             @default(false)
+  instituteId         String
+  createdBy           String
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  deletedAt           DateTime?
+
+  creator             User                @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  institute           Institute           @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  registrations       EventRegistration[]
+
+  @@index([instituteId])
+  @@index([createdBy])
+  @@index([deletedAt])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+model EventRegistration {
+  id          String    @id @default(uuid())
+  eventId     String
+  studentId   String
+  instituteId String
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, studentId])
+  @@index([eventId])
+  @@index([studentId])
+  @@index([deletedAt])
 }

@@ -125,6 +125,9 @@ import { prisma } from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/auth";
 import { getAuthorizedUser } from "@/lib/authorization";
 import { updateQuizSchema } from "@/lib/validations/quiz";
+import { notifyQuizPublished, notifyQuizDue } from "@/lib/services/notification-service";
+import { logAction } from "@/lib/services/audit-service";
+
 
 export async function GET(
   req: NextRequest,
@@ -409,6 +412,57 @@ export async function PUT(
       });
     }
 
+    if (updatedQuiz.isPublished && !existingQuiz.isPublished) {
+      try {
+        const enrollments = await prisma.enrollment.findMany({
+          where: {
+            batch: {
+              courseId: updatedQuiz.courseId,
+              deletedAt: null,
+            },
+            student: {
+              deletedAt: null,
+            },
+          },
+          select: {
+            studentId: true,
+          },
+        });
+
+        const studentIds = enrollments.map((e) => e.studentId);
+        if (studentIds.length > 0) {
+          const course = await prisma.course.findUnique({
+            where: { id: updatedQuiz.courseId },
+            select: { title: true },
+          });
+
+          await notifyQuizPublished({
+            userIds: studentIds,
+            instituteId: updatedQuiz.instituteId,
+            title: "New Quiz Published",
+            message: `A new quiz "${updatedQuiz.title}" has been published for your course "${course?.title || 'Unknown Course'}".`,
+            actionUrl: `/dashboard/quizzes/${updatedQuiz.id}`,
+          });
+        }
+      } catch (notificationError) {
+        console.error("[NOTIFICATION FAILURE] Failed to notify students of quiz publication:", notificationError);
+      }
+    }
+
+    await logAction({
+      req,
+      userId: user.id,
+      instituteId: existingQuiz.instituteId,
+      action: "UPDATE",
+      module: "QUIZZES",
+      entityType: "Quiz",
+      entityId: id,
+      description: `Quiz updated: ${updatedQuiz.title}`,
+      oldValues: existingQuiz,
+      newValues: updatedQuiz,
+      status: "SUCCESS",
+    });
+
     return NextResponse.json(updatedQuiz);
   } catch (error) {
     console.error("PUT QUIZ ERROR:", error);
@@ -495,6 +549,19 @@ export async function DELETE(
       },
     });
 
+    await logAction({
+      req,
+      userId: user.id,
+      instituteId: quiz.instituteId,
+      action: "DELETE",
+      module: "QUIZZES",
+      entityType: "Quiz",
+      entityId: id,
+      description: `Quiz deleted: ${quiz.title}`,
+      oldValues: quiz,
+      status: "SUCCESS",
+    });
+
     return NextResponse.json({ message: "Quiz deleted successfully" });
   } catch (error) {
     console.error("DELETE QUIZ ERROR:", error);
@@ -502,5 +569,110 @@ export async function DELETE(
       { message: "Failed to delete quiz" },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const payload = await authenticateRequest(req);
+    if (!payload) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await getAuthorizedUser(payload);
+    if (!user || !["FACULTY", "ADMIN", "SUPER_ADMIN"].includes(user.role)) {
+      return NextResponse.json({ message: "Forbidden: Management access required" }, { status: 403 });
+    }
+
+    const quiz = await prisma.quiz.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        course: {
+          select: {
+            instituteId: true,
+            facultyId: true,
+            title: true,
+          },
+        },
+      },
+    });
+
+    if (!quiz) {
+      return NextResponse.json({ message: "Quiz not found" }, { status: 404 });
+    }
+
+    // Role check and tenant boundary validation
+    if (user.role === "FACULTY" && quiz.course.facultyId !== user.id) {
+      return NextResponse.json({ message: "Forbidden: Access denied to course content" }, { status: 403 });
+    }
+
+    if (user.role !== "SUPER_ADMIN" && quiz.instituteId !== user.instituteId) {
+      return NextResponse.json({ message: "Forbidden: Tenant mismatch" }, { status: 403 });
+    }
+
+    // 1. Get all students enrolled in the course batch(es)
+    const enrollments = await prisma.enrollment.findMany({
+      where: {
+        batch: {
+          courseId: quiz.courseId,
+          deletedAt: null,
+        },
+        student: {
+          deletedAt: null,
+        },
+      },
+      select: {
+        studentId: true,
+      },
+    });
+
+    const enrolledStudentIds = enrollments.map((e) => e.studentId);
+
+    // 2. Get students who have already submitted/completed the quiz
+    const attempts = await prisma.quizAttempt.findMany({
+      where: {
+        quizId: id,
+        submittedAt: { not: null },
+      },
+      select: {
+        studentId: true,
+      },
+    });
+
+    const submittedStudentIds = attempts.map((a) => a.studentId);
+
+    // 3. Filter out students who already submitted
+    const targetStudentIds = enrolledStudentIds.filter(
+      (sid) => !submittedStudentIds.includes(sid)
+    );
+
+    if (targetStudentIds.length === 0) {
+      return NextResponse.json({ message: "All enrolled students have already submitted this quiz", count: 0 });
+    }
+
+    // 4. Send the due reminders
+    let notifiedCount = 0;
+    try {
+      await notifyQuizDue({
+        userIds: targetStudentIds,
+        instituteId: quiz.instituteId,
+        title: "Quiz Due Reminder",
+        message: `Reminder: The quiz "${quiz.title}" for "${quiz.course.title}" is due soon. Please submit your attempts.`,
+        actionUrl: `/dashboard/quizzes/${id}`,
+      });
+      notifiedCount = targetStudentIds.length;
+    } catch (notificationError) {
+      console.error("[NOTIFICATION FAILURE] Failed to send quiz due reminders:", notificationError);
+      return NextResponse.json({ message: "Failed to send reminders" }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: `Due reminders sent successfully to ${notifiedCount} students`, count: notifiedCount });
+  } catch (error) {
+    console.error("POST QUIZ REMINDER ERROR:", error);
+    return NextResponse.json({ message: "Failed to send quiz due reminders" }, { status: 500 });
   }
 }

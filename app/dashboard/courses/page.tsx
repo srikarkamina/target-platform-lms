@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import { BookOpen, Plus, Sparkles, GraduationCap } from "lucide-react";
 
 interface Course {
@@ -63,13 +63,8 @@ export default function CoursesPage() {
   const isManagementRole = userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "FACULTY";
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-
-      <div className="flex">
-        <Sidebar />
-
-        <main className="flex-1 p-8">
+    <DashboardLayout>
+      <DashboardPageContainer>
           {/* Header */}
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -84,7 +79,7 @@ export default function CoursesPage() {
               </p>
             </div>
 
-            {isManagementRole && (
+            {(userRole === "ADMIN" || userRole === "SUPER_ADMIN") && (
               <Link
                 href="/dashboard/courses/new"
                 className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-indigo-700 transition-colors cursor-pointer self-start sm:self-auto"
@@ -154,8 +149,7 @@ export default function CoursesPage() {
               ))}
             </div>
           )}
-        </main>
-      </div>
-    </div>
+      </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

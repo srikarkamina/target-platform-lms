@@ -42,7 +42,7 @@ export default function Home() {
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/login"
-            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-indigo-650 hover:bg-indigo-750 px-8 text-sm font-bold text-white transition-all shadow-md shadow-indigo-100"
+            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-8 text-sm font-bold text-white transition-all shadow-md shadow-indigo-100"
           >
             Enter Dashboard
           </Link>

@@ -3,9 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import api from "@/lib/axios";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
-import { Plus, Search, Filter, Edit, Trash2, HelpCircle, Award, AlertTriangle, Calendar, Clock, BookOpen, Layers } from "lucide-react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
+import { Plus, Search, Filter, Edit, Trash2, HelpCircle, Award, AlertTriangle, Calendar, Clock, Layers } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Course {
@@ -142,13 +142,8 @@ export default function QuizzesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
-      <Navbar />
-
-      <div className="flex">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-6">
+    <DashboardLayout>
+      <DashboardPageContainer>
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -385,8 +380,7 @@ export default function QuizzesPage() {
               </div>
             </div>
           )}
-        </main>
-      </div>
+      </DashboardPageContainer>
 
       {/* Delete Confirmation Dialog */}
       {isDeleteOpen && selectedQuiz && (
@@ -425,6 +419,6 @@ export default function QuizzesPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }

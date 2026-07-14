@@ -92,6 +92,8 @@ import { prisma } from "@/lib/prisma";
 import { deleteFile } from "@/lib/supabase";
 import { updateVideoSchema } from "@/lib/validations/video";
 import { authorizeVideoAccess } from "@/lib/authorization";
+import { logAction } from "@/lib/services/audit-service";
+import { SubscriptionService } from "@/lib/services/subscription-service";
 
 export async function GET(
   req: NextRequest,
@@ -144,10 +146,26 @@ export async function PUT(
       );
     }
 
+    const oldVideo = auth.video;
+
     // Update video
     const updatedVideo = await prisma.video.update({
       where: { id },
       data: validationResult.data,
+    });
+
+    await logAction({
+      req,
+      userId: auth.user?.id || null,
+      instituteId: auth.user?.instituteId || "global",
+      action: "UPDATE",
+      module: "VIDEOS",
+      entityType: "Video",
+      entityId: id,
+      description: `Video updated: ${updatedVideo.title}`,
+      oldValues: oldVideo,
+      newValues: updatedVideo,
+      status: "SUCCESS",
     });
 
     return NextResponse.json(updatedVideo);
@@ -176,6 +194,7 @@ export async function DELETE(
     }
 
     const video = auth.video!;
+    const oldVideo = JSON.parse(JSON.stringify(video));
 
     // Soft delete database record
     await prisma.video.update({
@@ -183,6 +202,25 @@ export async function DELETE(
       data: {
         deletedAt: new Date(),
       },
+    });
+
+    try {
+      await SubscriptionService.takeUsageSnapshot(auth.user?.instituteId || "global");
+    } catch (snapshotErr) {
+      console.error("Failed to record usage snapshot on video delete:", snapshotErr);
+    }
+
+    await logAction({
+      req,
+      userId: auth.user?.id || null,
+      instituteId: auth.user?.instituteId || "global",
+      action: "DELETE",
+      module: "VIDEOS",
+      entityType: "Video",
+      entityId: id,
+      description: `Video deleted: ${video.title}`,
+      oldValues: oldVideo,
+      status: "SUCCESS",
     });
 
     // If there is an associated Supabase Storage file, clean it up

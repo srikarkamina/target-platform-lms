@@ -1,20 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import { env } from "./env";
 
-const supabaseUrl = process.env.SUPABASE_URL || "https://placeholder.supabase.co";
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "placeholder-anon-key";
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-service-key";
+const supabaseUrl = env.SUPABASE_URL;
+const supabaseAnonKey = env.SUPABASE_ANON_KEY;
+const supabaseServiceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
-console.log("SUPABASE_URL:", process.env.SUPABASE_URL);
-console.log("SERVICE_ROLE_EXISTS:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-console.log(
-  "SERVICE_ROLE_PREFIX:",
-  process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 15)
-);
-
-console.log("[Supabase Initialization] URL:", supabaseUrl);
-
-console.log("[Supabase Initialization] Anon Key loaded:", supabaseAnonKey !== "placeholder-anon-key" ? `yes (starts with ${supabaseAnonKey.substring(0, 10)})` : "no");
-console.log("[Supabase Initialization] Service Role Key loaded:", supabaseServiceKey !== "placeholder-service-key" ? `yes (starts with ${supabaseServiceKey.substring(0, 10)})` : "no");
+if (env.NODE_ENV !== "production") {
+  console.log("[Supabase Initialization] URL:", supabaseUrl);
+}
 
 // Client for use in standard browser context
 export const supabaseBrowser = createClient(supabaseUrl, supabaseAnonKey);
@@ -40,9 +33,9 @@ export async function uploadFile(
   path: string,
   contentType?: string
 ) {
-  console.log(`[Supabase Upload] Attempting upload to bucket: "${bucket}", path: "${path}"`);
-  console.log(`[Supabase Upload] Client URL: "${supabaseUrl}"`);
-  console.log(`[Supabase Upload] Using Service Key: "${supabaseServiceKey.substring(0, 10)}..." (Length: ${supabaseServiceKey.length})`);
+  if (env.NODE_ENV !== "production") {
+    console.log(`[Supabase Upload] Attempting upload to bucket: "${bucket}", path: "${path}"`);
+  }
 
   const { data, error } = await supabaseAdmin.storage
     .from(bucket)
@@ -54,7 +47,6 @@ export async function uploadFile(
     console.error("[Supabase Upload] Error response:", JSON.stringify(error, null, 2));
     throw error;
   }
-  console.log("[Supabase Upload] Upload success data:", data);
   return data;
 }
 

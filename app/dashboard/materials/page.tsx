@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import api from "@/lib/axios";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
 import { FileText, Plus, Edit2, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -71,13 +71,8 @@ export default function MaterialsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <Navbar />
-
-      <div className="flex flex-1">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-6 font-sans">
+    <DashboardLayout>
+      <DashboardPageContainer>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
@@ -123,8 +118,9 @@ export default function MaterialsPage() {
               </Link>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+              {/* Desktop Table View */}
+              <div className="overflow-x-auto hidden md:block">
                 <table className="w-full border-collapse text-left text-sm text-slate-600">
                   <thead className="bg-slate-50 border-b border-slate-200">
                     <tr>
@@ -186,10 +182,71 @@ export default function MaterialsPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Stacked Card View */}
+              <div className="block md:hidden divide-y divide-slate-100 bg-white">
+                {materials.map((material) => (
+                  <div key={material.id} className="p-5 space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 text-sm truncate">{material.title}</p>
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">Sequence Order: {material.sortOrder}</p>
+                      </div>
+                      <span className={`shrink-0 rounded-lg px-2 py-1 text-[10px] uppercase font-bold tracking-wider ${
+                        MATERIAL_TYPE_COLORS[material.materialType] || MATERIAL_TYPE_COLORS.OTHER
+                      }`}>
+                        {material.materialType}
+                      </span>
+                    </div>
+
+                    {material.description && (
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {material.description}
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs">
+                      <div className="space-y-1 col-span-2">
+                        <p className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Academic Course</p>
+                        <Link href={`/dashboard/courses/${material.courseId}`} className="font-bold text-indigo-650 hover:underline leading-tight block truncate">
+                          {material.course.title}
+                        </Link>
+                      </div>
+                      <div className="space-y-1 col-span-2">
+                        <p className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Attachment Link</p>
+                        <a
+                          href={material.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-600 hover:underline inline-flex items-center gap-0.5 text-xs font-bold"
+                        >
+                          Open Study Material ↗
+                        </a>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <Link
+                        href={`/dashboard/courses/${material.courseId}`}
+                        className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 py-2.5 text-xs font-bold text-slate-700 shadow-xs transition-colors"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                        <span>Edit</span>
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(material.courseId, material.id)}
+                        className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 py-2.5 text-xs font-bold text-rose-700 shadow-xs transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-        </main>
-      </div>
-    </div>
+        </DashboardPageContainer>
+    </DashboardLayout>
   );
 }

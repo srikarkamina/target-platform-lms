@@ -13,43 +13,47 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const totalStudents = await prisma.user.count({
-      where: {
-        role: "STUDENT",
-        deletedAt: null,
-      },
-    });
-
-    const totalFaculty = await prisma.user.count({
-      where: {
-        role: "FACULTY",
-        deletedAt: null,
-      },
-    });
-
-    const totalCourses = await prisma.course.count({
-      where: {
-        deletedAt: null,
-      },
-    });
-
-    const totalBatches = await prisma.batch.count({
-      where: {
-        deletedAt: null,
-      },
-    });
-
-    const totalEnrollments = await prisma.enrollment.count();
-
-    const recentCourses = await prisma.course.findMany({
-      where: {
-        deletedAt: null,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 5,
-    });
+    const [
+      totalStudents,
+      totalFaculty,
+      totalCourses,
+      totalBatches,
+      totalEnrollments,
+      recentCourses,
+    ] = await Promise.all([
+      prisma.user.count({
+        where: {
+          role: "STUDENT",
+          deletedAt: null,
+        },
+      }),
+      prisma.user.count({
+        where: {
+          role: "FACULTY",
+          deletedAt: null,
+        },
+      }),
+      prisma.course.count({
+        where: {
+          deletedAt: null,
+        },
+      }),
+      prisma.batch.count({
+        where: {
+          deletedAt: null,
+        },
+      }),
+      prisma.enrollment.count(),
+      prisma.course.findMany({
+        where: {
+          deletedAt: null,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 5,
+      }),
+    ]);
 
     return NextResponse.json({
       totalStudents,

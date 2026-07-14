@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
 import path from "path";
 import fs from "fs/promises";
+import { SubscriptionService } from "@/lib/services/subscription-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,6 +27,16 @@ export async function POST(req: NextRequest) {
       console.warn("[UPLOAD ROUTE] Bad Request: No file attached to the form data.");
       return NextResponse.json(
         { message: "No file uploaded" },
+        { status: 400 }
+      );
+    }
+
+    // Verify storage quota limit
+    const instituteId = payload.instituteId || "global";
+    const canUpload = await SubscriptionService.checkStorageLimit(instituteId, file.size);
+    if (!canUpload) {
+      return NextResponse.json(
+        { message: "Storage quota exceeded for this subscription plan. Please upgrade." },
         { status: 400 }
       );
     }
@@ -73,6 +84,12 @@ export async function POST(req: NextRequest) {
     const fileUrl = `/uploads/assignments/${uniqueFileName}`;
 
     console.log(`[UPLOAD ROUTE] Successfully generated local URL path: ${fileUrl}`);
+
+    try {
+      await SubscriptionService.takeUsageSnapshot(instituteId);
+    } catch (snapshotErr) {
+      console.error("Failed to record usage snapshot on assignment upload:", snapshotErr);
+    }
 
     return NextResponse.json(
       {

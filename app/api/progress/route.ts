@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorizeVideoAccess } from "@/lib/authorization";
+import { notifyCourseCompleted } from "@/lib/services/notification-service";
+
 
 export async function POST(req: Request) {
   try {
@@ -60,6 +62,63 @@ export async function POST(req: Request) {
         completed: completed,
       },
     });
+
+    // Check course completion status
+    if (completed) {
+      try {
+        const video = await prisma.video.findUnique({
+          where: { id: videoId },
+          select: { courseId: true },
+        });
+
+        if (video) {
+          const totalVideos = await prisma.video.count({
+            where: { courseId: video.courseId, published: true, deletedAt: null },
+          });
+
+          const completedVideos = await prisma.progress.count({
+            where: {
+              userId: user.id,
+              completed: true,
+              video: { courseId: video.courseId, published: true, deletedAt: null },
+            },
+          });
+
+          if (totalVideos > 0 && completedVideos === totalVideos) {
+            // Check if course completed notification was already sent to avoid duplicates
+            const existingNotification = await prisma.notification.findFirst({
+              where: {
+                userId: user.id,
+                type: "COURSE_COMPLETED",
+                deletedAt: null,
+                metadata: {
+                  path: ["courseId"],
+                  equals: video.courseId,
+                },
+              },
+            });
+
+            if (!existingNotification) {
+              const course = await prisma.course.findUnique({
+                where: { id: video.courseId },
+                select: { title: true },
+              });
+
+              await notifyCourseCompleted({
+                userIds: user.id,
+                instituteId: user.instituteId || "global",
+                title: "Course Completed!",
+                message: `Congratulations! You have completed all lessons in the course "${course?.title || 'Unknown Course'}".`,
+                actionUrl: `/dashboard/courses/${video.courseId}`,
+                metadata: { courseId: video.courseId },
+              });
+            }
+          }
+        }
+      } catch (notificationError) {
+        console.error("[NOTIFICATION FAILURE] Failed to check course completeness or notify student:", notificationError);
+      }
+    }
 
     return NextResponse.json(progress, { status: 200 });
   } catch (error) {

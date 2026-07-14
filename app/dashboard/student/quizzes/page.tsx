@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/axios";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
-import { Award, Clock, BookOpen, Search, Play, ArrowRight, CheckCircle, HelpCircle, RefreshCw, AlertCircle } from "lucide-react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardPageContainer from "@/components/layout/DashboardPageContainer";
+import { Award, Clock, BookOpen, Search, Play, ArrowRight, CheckCircle, RefreshCw, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Course {
@@ -118,13 +118,8 @@ export default function StudentQuizzesPage() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-      <Navbar />
-
-      <div className="flex flex-1">
-        <Sidebar />
-
-        <main className="flex-1 p-8 space-y-6">
+    <DashboardLayout>
+      <DashboardPageContainer>
           {/* Header Banner */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -317,8 +312,7 @@ export default function StudentQuizzesPage() {
               </div>
             </div>
           )}
-        </main>
-      </div>
-    </div>
+        </DashboardPageContainer>
+    </DashboardLayout>
   );
 }
