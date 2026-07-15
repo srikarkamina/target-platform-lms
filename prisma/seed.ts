@@ -1,5 +1,5 @@
 import { PrismaClient } from "../app/generated/prisma/client";
-import { Role } from "../app/generated/prisma/enums";
+import { Role, UserStatus } from "../app/generated/prisma/enums";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -53,9 +53,11 @@ async function main() {
       data: {
         name: "Super Admin",
         email: "admin@target.com",
-        password: superAdminPassword,
+        passwordHash: superAdminPassword,
+        passwordSet: true,
         role: Role.SUPER_ADMIN,
         instituteId: institute.id,
+        status: UserStatus.ACTIVE,
       },
     });
     console.log("Created SUPER_ADMIN:", superAdmin.email);
@@ -72,9 +74,11 @@ async function main() {
       data: {
         name: "Admin User",
         email: "admin@test.com",
-        password: devPassword,
+        passwordHash: devPassword,
+        passwordSet: true,
         role: Role.ADMIN,
         instituteId: institute.id,
+        status: UserStatus.ACTIVE,
       },
     });
     console.log("Created ADMIN:", admin.email);
@@ -91,9 +95,11 @@ async function main() {
       data: {
         name: "Faculty User",
         email: "faculty@test.com",
-        password: devPassword,
+        passwordHash: devPassword,
+        passwordSet: true,
         role: Role.FACULTY,
         instituteId: institute.id,
+        status: UserStatus.ACTIVE,
       },
     });
     console.log("Created FACULTY:", faculty.email);
@@ -127,9 +133,11 @@ async function main() {
         data: {
           name: sData.name,
           email: sData.email,
-          password: devPassword,
+          passwordHash: devPassword,
+          passwordSet: true,
           role: Role.STUDENT,
           instituteId: institute.id,
+          status: UserStatus.ACTIVE,
         },
       });
       console.log("Created STUDENT:", student.name, `(${student.email})`);

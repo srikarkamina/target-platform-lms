@@ -4,8 +4,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Institute {
@@ -43,6 +44,13 @@ model Institute {
   polls                Poll[]
   events               Event[]
 
+  // Admin information fields
+  adminName            String          @default("")
+  adminEmail           String          @default("")
+  adminPhone           String?
+  adminId              String?         @unique
+  admin                User?           @relation("InstituteAdmin", fields: [adminId], references: [id])
+
   @@index([deletedAt])
 }
 
@@ -50,9 +58,16 @@ model User {
   id             String        @id @default(uuid())
   name           String
   email          String        @unique
-  password       String
+  passwordHash   String?
+  passwordSet    Boolean       @default(false)
   role           Role
+  status         UserStatus    @default(ACTIVE)
   instituteId    String?
+  phone          String?
+  department     String?
+  createdBy      String?
+  lastLogin      DateTime?
+  provider       String?       @default("credentials")
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   deletedAt      DateTime?
@@ -60,6 +75,7 @@ model User {
   coursesTaught  Course[]      @relation("FacultyCourses")
   enrollments    Enrollment[]
   institute      Institute?    @relation(fields: [instituteId], references: [id])
+  administeredInstitute Institute?    @relation("InstituteAdmin")
   progresses     Progress[]
   submissions    Submission[]
   quizzesCreated Quiz[]        @relation("CreatedQuizzes")
@@ -1022,3 +1038,59 @@ model EventRegistration {
   @@index([studentId])
   @@index([deletedAt])
 }
+
+model Otp {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  hash      String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING
+  SUSPENDED
+  DELETED
+  PENDING_INVITE
+  DISABLED
+}
+
+enum AccessRequestStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  ONBOARDING
+  ACTIVE
+  REJECTED
+  CANCELLED
+}
+
+model AccessRequest {
+  id            String              @id @default(uuid())
+  requestNumber String              @unique
+  instituteName String
+  ownerName     String
+  email         String              // Validation logic will block duplicates, not unique constraint, to allow resubmissions over time
+  phone         String
+  city          String
+  state         String
+  country       String
+  website       String?
+  requestedPlan String              // e.g. FREE, BASIC, PROFESSIONAL, ENTERPRISE
+  message       String?             @db.Text
+  status        AccessRequestStatus @default(SUBMITTED)
+  reviewNotes   String?             @db.Text
+  approvedBy    String?
+  approvedAt    DateTime?
+  rejectedAt    DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([email])
+  @@index([status])
+}
+
+

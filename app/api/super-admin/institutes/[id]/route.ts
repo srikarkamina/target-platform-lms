@@ -5,6 +5,7 @@ import { getAuthorizedUser } from "@/lib/authorization";
 import { updateInstituteSchema } from "@/lib/validations/institute";
 import { logAction } from "@/lib/services/audit-service";
 
+
 export async function GET(
   req: NextRequest,
   props: { params: Promise<{ id: string }> }
@@ -193,9 +194,106 @@ export async function PATCH(
       return NextResponse.json({ message: "Validation error", errors: validation.error.format() }, { status: 400 });
     }
 
-    const updated = await prisma.institute.update({
-      where: { id },
-      data: validation.data,
+    const { name, adminName, adminEmail, adminPhone, logo, promoteConfirmed } = validation.data;
+
+    // Check if new adminEmail already exists globally for other users
+    const otherUser = await prisma.user.findUnique({
+      where: { email: adminEmail },
+    });
+
+    if (otherUser && otherUser.id !== institute.adminId) {
+      if (otherUser.role === "SUPER_ADMIN") {
+        return NextResponse.json({ message: "This email is registered to a Super Admin and cannot be used." }, { status: 400 });
+      }
+      if (otherUser.role === "ADMIN") {
+        if (otherUser.instituteId && otherUser.instituteId !== id) {
+          return NextResponse.json({ message: "This email is already an admin for another institute." }, { status: 400 });
+        }
+      }
+      if (otherUser.role === "FACULTY" || otherUser.role === "STUDENT") {
+        if (promoteConfirmed !== true) {
+          return NextResponse.json({
+            promotionRequired: true,
+            role: otherUser.role,
+            message: `This email is registered as a ${otherUser.role}. Do you want to promote them to Institute Admin?`
+          }, { status: 200 });
+        }
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      let adminUser;
+
+      if (otherUser) {
+        // We promote/link otherUser
+        adminUser = await tx.user.update({
+          where: { id: otherUser.id },
+          data: {
+            name: adminName,
+            role: "ADMIN",
+            instituteId: id,
+          },
+        });
+      } else if (institute.adminId) {
+        // Update current linked admin user
+        adminUser = await tx.user.update({
+          where: { id: institute.adminId },
+          data: {
+            name: adminName,
+            email: adminEmail,
+            role: "ADMIN",
+            instituteId: id,
+          },
+        });
+      } else {
+        // Create a new Admin User
+        adminUser = await tx.user.create({
+          data: {
+            name: adminName,
+            email: adminEmail,
+            passwordHash: null,
+            passwordSet: false,
+            role: "ADMIN",
+            status: "PENDING_INVITE",
+            instituteId: id,
+            phone: adminPhone || null,
+            provider: "credentials",
+            createdBy: user.id,
+          },
+        });
+      }
+
+      const inst = await tx.institute.update({
+        where: { id },
+        data: {
+          name,
+          logo: logo || null,
+          adminName,
+          adminEmail,
+          adminPhone: adminPhone || null,
+          adminId: adminUser.id,
+        },
+      });
+
+      // Sync with default settings
+      await tx.instituteSettings.upsert({
+        where: { instituteId: id },
+        update: {
+          name,
+          logoUrl: logo || null,
+          email: adminEmail,
+          phone: adminPhone || null,
+        },
+        create: {
+          instituteId: id,
+          name,
+          logoUrl: logo || null,
+          email: adminEmail,
+          phone: adminPhone || null,
+        },
+      });
+
+      return inst;
     });
 
     await logAction({

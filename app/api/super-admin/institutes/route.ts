@@ -5,7 +5,7 @@ import { getAuthorizedUser } from "@/lib/authorization";
 import { createInstituteSchema } from "@/lib/validations/institute";
 import { logAction } from "@/lib/services/audit-service";
 import { InstituteStatus, Prisma } from "@/app/generated/prisma/client";
-import bcrypt from "bcryptjs";
+
 
 export async function GET(req: NextRequest) {
   try {
@@ -234,141 +234,143 @@ export async function POST(req: NextRequest) {
 
     const {
       name,
-      code,
-      email,
-      phone,
-      address,
-      website,
-      logo,
-      city,
-      state,
-      country,
-      pincode,
       adminName,
       adminEmail,
-      temporaryPassword,
-      planId,
-      maxStudents,
-      maxFaculty,
-      maxCourses,
-      storageLimitGB,
-      certificateLimit: _certificateLimit,
-      trialDays,
+      adminPhone,
+      logo,
+      promoteConfirmed,
     } = validation.data;
 
-    // Check if code is already taken
-    const codeToken = `[CODE: ${code.toUpperCase().trim()}]`;
-    const existingCode = await prisma.instituteSettings.findFirst({
-      where: {
-        description: {
-          contains: codeToken,
-        },
-      },
-    });
-    if (existingCode) {
-      return NextResponse.json({ message: "An institute with this code already exists." }, { status: 400 });
+    // Generate a unique code from the institute name
+    let baseCode = name.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+    if (baseCode.length < 3) {
+      baseCode = "INST" + Math.random().toString(36).substring(2, 6).toUpperCase();
+    }
+    let code = baseCode;
+    let codeToken = `[CODE: ${code}]`;
+    let attempts = 0;
+    while (attempts < 10) {
+      const existing = await prisma.instituteSettings.findFirst({
+        where: { description: { contains: codeToken } },
+      });
+      if (!existing) break;
+      code = baseCode.slice(0, 7) + Math.random().toString(36).substring(2, 5).toUpperCase();
+      codeToken = `[CODE: ${code}]`;
+      attempts++;
     }
 
     // Check if admin email already exists globally
     const existingUser = await prisma.user.findUnique({
       where: { email: adminEmail },
     });
-    if (existingUser) {
-      return NextResponse.json({ message: "An admin account with this email already exists." }, { status: 400 });
-    }
 
-    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+    if (existingUser) {
+      if (existingUser.role === "SUPER_ADMIN") {
+        return NextResponse.json({ message: "This email is registered to a Super Admin and cannot be used." }, { status: 400 });
+      }
+      if (existingUser.role === "ADMIN") {
+        if (existingUser.instituteId) {
+          return NextResponse.json({ message: "This email is already an admin for another institute." }, { status: 400 });
+        }
+      }
+      if (existingUser.role === "FACULTY" || existingUser.role === "STUDENT") {
+        if (promoteConfirmed !== true) {
+          return NextResponse.json({
+            promotionRequired: true,
+            role: existingUser.role,
+            message: `This email is registered as a ${existingUser.role}. Do you want to promote them to Institute Admin?`
+          }, { status: 200 });
+        }
+      }
+    }
 
     // Run transaction
     const institute = await prisma.$transaction(async (tx) => {
+      // 1. Create Institute
       const inst = await tx.institute.create({
         data: {
           name,
           logo: logo || null,
           status: "ACTIVE",
+          adminName,
+          adminEmail,
+          adminPhone: adminPhone || null,
         },
       });
 
-      // Create Settings
+      // 2. Create/Update Admin User
+      let adminUser;
+      if (existingUser) {
+        // Promote FACULTY/STUDENT or associate unlinked ADMIN
+        adminUser = await tx.user.update({
+          where: { id: existingUser.id },
+          data: {
+            role: "ADMIN",
+            instituteId: inst.id,
+          },
+        });
+      } else {
+        // Create new Admin User
+        adminUser = await tx.user.create({
+          data: {
+            name: adminName,
+            email: adminEmail,
+            passwordHash: null,
+            passwordSet: false,
+            role: "ADMIN",
+            status: "PENDING_INVITE",
+            instituteId: inst.id,
+            phone: adminPhone || null,
+            provider: "credentials",
+            createdBy: user.id,
+          },
+        });
+      }
+
+      // 3. Link admin to Institute
+      const updatedInst = await tx.institute.update({
+        where: { id: inst.id },
+        data: {
+          adminId: adminUser.id,
+        },
+      });
+
+      // 4. Create Settings
       await tx.instituteSettings.create({
         data: {
           instituteId: inst.id,
           name: inst.name,
           logoUrl: logo || null,
-          email: email,
-          phone: phone || null,
-          address: address || null,
-          city: city || null,
-          state: state || null,
-          country: country || null,
-          postalCode: pincode || null,
-          website: website || null,
+          email: adminEmail,
+          phone: adminPhone || null,
           description: codeToken,
         },
       });
 
-      // Create Admin User
-      await tx.user.create({
-        data: {
-          name: adminName,
-          email: adminEmail,
-          password: hashedPassword,
-          role: "ADMIN",
-          instituteId: inst.id,
-        },
-      });
-
-      // Resolve plan
+      // 5. Resolve plan (default to Free plan or first available)
       const selectedPlan = await tx.subscriptionPlan.findUnique({
-        where: { id: planId },
+        where: { code: "free" },
+      }) || await tx.subscriptionPlan.findFirst({
+        orderBy: { price: "asc" },
       });
+
       if (!selectedPlan) {
-        throw new Error("Subscription plan not found");
+        throw new Error("No subscription plans found in the database. Please seed the database first.");
       }
 
-      let activePlanId = selectedPlan.id;
-
-      // Handle custom limit overrides
-      const studentsDiff = maxStudents !== undefined && maxStudents !== null && maxStudents !== selectedPlan.maxStudents;
-      const facultyDiff = maxFaculty !== undefined && maxFaculty !== null && maxFaculty !== selectedPlan.maxFaculty;
-      const coursesDiff = maxCourses !== undefined && maxCourses !== null && maxCourses !== selectedPlan.maxCourses;
-      const storageDiff = storageLimitGB !== undefined && storageLimitGB !== null && storageLimitGB !== selectedPlan.storageLimitGB;
-      const trialDaysDiff = trialDays !== undefined && trialDays !== null && trialDays !== selectedPlan.trialDays;
-
-      const isCustom = studentsDiff || facultyDiff || coursesDiff || storageDiff || trialDaysDiff;
-
-      if (isCustom) {
-        const newCustomPlan = await tx.subscriptionPlan.create({
-          data: {
-            code: `custom-${inst.id}-${Date.now()}`,
-            name: `Custom (${selectedPlan.name})`,
-            price: selectedPlan.price,
-            maxStudents: maxStudents !== undefined && maxStudents !== null ? maxStudents : selectedPlan.maxStudents,
-            maxFaculty: maxFaculty !== undefined && maxFaculty !== null ? maxFaculty : selectedPlan.maxFaculty,
-            maxCourses: maxCourses !== undefined && maxCourses !== null ? maxCourses : selectedPlan.maxCourses,
-            maxAdmins: selectedPlan.maxAdmins,
-            storageLimitGB: storageLimitGB !== undefined && storageLimitGB !== null ? storageLimitGB : selectedPlan.storageLimitGB,
-            trialDays: trialDays !== undefined && trialDays !== null ? trialDays : selectedPlan.trialDays,
-          },
-        });
-        activePlanId = newCustomPlan.id;
-      }
-
-      const planTrialDays = trialDays !== undefined && trialDays !== null ? trialDays : selectedPlan.trialDays;
-
-      // Create Subscription
+      // 6. Create Subscription
       await tx.subscription.create({
         data: {
           instituteId: inst.id,
-          planId: activePlanId,
+          planId: selectedPlan.id,
           status: selectedPlan.price === 0 ? "TRIAL" : "ACTIVE",
           startsAt: new Date(),
-          trialEndsAt: selectedPlan.price === 0 ? new Date(Date.now() + planTrialDays * 24 * 60 * 60 * 1000) : null,
+          trialEndsAt: selectedPlan.price === 0 ? new Date(Date.now() + selectedPlan.trialDays * 24 * 60 * 60 * 1000) : null,
           autoRenew: true,
         },
       });
 
-      return inst;
+      return updatedInst;
     });
 
     await logAction({

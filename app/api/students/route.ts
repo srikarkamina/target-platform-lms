@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/auth";
 import { getAuthorizedUser } from "@/lib/authorization";
-import bcrypt from "bcryptjs";
+
 import { notifyCourseEnrolled } from "@/lib/services/notification-service";
 import { SubscriptionService } from "@/lib/services/subscription-service";
 import { createStudentSchema } from "@/lib/validations/student";
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
       return sendError("Validation failed", validation.error.format(), 400);
     }
 
-    const { name, email, courseIds } = validation.data;
+    const { name, email, phone, courseIds } = validation.data;
 
     // Resolve tenant ID
     const targetInstituteId = user.role === "SUPER_ADMIN" ? (body.instituteId || user.instituteId) : user.instituteId;
@@ -110,26 +110,43 @@ export async function POST(req: NextRequest) {
     // Execute database operations inside a single Prisma transaction
     const student = await prisma.$transaction(async (tx) => {
       // 1. Check duplicate student email
-      const existingUser = await tx.user.findFirst({
+      let existingUser = await tx.user.findFirst({
         where: { email, deletedAt: null },
       });
+
       if (existingUser) {
-        throw new Error("A student with this email address already exists.");
+        if (existingUser.role === "SUPER_ADMIN") {
+          throw new Error("This email belongs to a Super Admin and cannot be registered as a student.");
+        }
+        if (existingUser.role === "ADMIN") {
+          throw new Error("This email belongs to an Admin and cannot be registered as a student.");
+        }
+
+        // Associate with institute if not already associated
+        existingUser = await tx.user.update({
+          where: { id: existingUser.id },
+          data: {
+            instituteId: targetInstituteId,
+            ...(phone ? { phone } : {}),
+          },
+        });
+      } else {
+        // Create new user without password
+        existingUser = await tx.user.create({
+          data: {
+            name,
+            email,
+            passwordHash: null,
+            passwordSet: false,
+            role: "STUDENT",
+            instituteId: targetInstituteId,
+            phone: phone || null,
+            status: "PENDING_INVITE",
+            provider: "credentials",
+            createdBy: user.id,
+          },
+        });
       }
-
-      // 2. Hash password
-      const hashedPassword = await bcrypt.hash("123456", 10);
-
-      // 3. Create student
-      const createdStudent = await tx.user.create({
-        data: {
-          name,
-          email,
-          password: hashedPassword,
-          role: "STUDENT",
-          instituteId: targetInstituteId,
-        },
-      });
 
       // 4. Enroll in each course batch
       for (const courseId of courseIds) {
@@ -150,16 +167,25 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // Create enrollment record
-        await tx.enrollment.create({
-          data: {
-            studentId: createdStudent.id,
+        // Check if enrollment already exists to prevent duplicate enrollment
+        const existingEnrollment = await tx.enrollment.findFirst({
+          where: {
+            studentId: existingUser.id,
             batchId: batch.id,
           },
         });
+
+        if (!existingEnrollment) {
+          await tx.enrollment.create({
+            data: {
+              studentId: existingUser.id,
+              batchId: batch.id,
+            },
+          });
+        }
       }
 
-      return createdStudent;
+      return existingUser;
     });
 
     // Notify student of course enrollments after transaction success

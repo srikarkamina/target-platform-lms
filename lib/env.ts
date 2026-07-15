@@ -7,6 +7,11 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required").default("target_super_secret_key"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  RESEND_API_KEY: z.string().optional(),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
+  SUPER_ADMIN_EMAIL: z.string().optional(),
 });
 
 const envParsed = envSchema.safeParse(process.env);

@@ -23,6 +23,9 @@ interface Institute {
   storageUsageBytes: number;
   suspendedAt: string | null;
   suspendedBy: string | null;
+  adminName: string;
+  adminEmail: string;
+  adminPhone: string | null;
 }
 
 interface Plan {
@@ -50,36 +53,14 @@ export default function InstitutesListPage() {
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [plans, setPlans] = useState<Plan[]>([]);
-  
-  // Section 1 - Institute Information states
-  const [newName, setNewName] = useState("");
-  const [newCode, setNewCode] = useState("");
-  const [newLogo, setNewLogo] = useState("");
-  const [newWebsite, setNewWebsite] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [newAddress, setNewAddress] = useState("");
-  const [newCity, setNewCity] = useState("");
-  const [newStateVal, setNewStateVal] = useState("");
-  const [newCountry, setNewCountry] = useState("");
-  const [newPincode, setNewPincode] = useState("");
 
-  // Section 2 - Admin User Information states
+  
+  // Setup fields
+  const [newName, setNewName] = useState("");
+  const [newLogo, setNewLogo] = useState("");
+  const [newPhone, setNewPhone] = useState("");
   const [newAdminName, setNewAdminName] = useState("");
   const [newAdminEmail, setNewAdminEmail] = useState("");
-  const [newTemporaryPassword, setNewTemporaryPassword] = useState("");
-  const [newConfirmPassword, setNewConfirmPassword] = useState("");
-
-  // Section 3 - Subscription Plan & Custom Limits states
-  const [newPlanId, setNewPlanId] = useState("");
-  const [enableCustomOverrides, setEnableCustomOverrides] = useState(false);
-  const [newMaxStudents, setNewMaxStudents] = useState("");
-  const [newMaxFaculty, setNewMaxFaculty] = useState("");
-  const [newMaxCourses, setNewMaxCourses] = useState("");
-  const [newStorageLimitGB, setNewStorageLimitGB] = useState("");
-  const [newCertificateLimit, setNewCertificateLimit] = useState("");
-  const [newTrialDays, setNewTrialDays] = useState("");
 
   const [submittingCreate, setSubmittingCreate] = useState(false);
 
@@ -87,6 +68,9 @@ export default function InstitutesListPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editLogo, setEditLogo] = useState("");
+  const [editAdminName, setEditAdminName] = useState("");
+  const [editAdminEmail, setEditAdminEmail] = useState("");
+  const [editAdminPhone, setEditAdminPhone] = useState("");
   const [submittingEdit, setSubmittingEdit] = useState(false);
 
   const parseJwt = (token: string) => {
@@ -125,15 +109,6 @@ export default function InstitutesListPage() {
     }
   }, [page, limit, search, status]);
 
-  const fetchPlans = async () => {
-    try {
-      const res = await api.get("/subscriptions/plans");
-      setPlans(res.data);
-    } catch (err) {
-      console.error("Failed to load plans:", err);
-    }
-  };
-
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -146,7 +121,6 @@ export default function InstitutesListPage() {
       return;
     }
     fetchInstitutes();
-    fetchPlans();
   }, [fetchInstitutes, router]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -155,90 +129,47 @@ export default function InstitutesListPage() {
     fetchInstitutes();
   };
 
-  const handleNewPlanChange = (planId: string) => {
-    setNewPlanId(planId);
-    const chosenPlan = plans.find((p) => p.id === planId);
-    if (chosenPlan) {
-      setNewMaxStudents(chosenPlan.maxStudents !== null ? String(chosenPlan.maxStudents) : "");
-      setNewMaxFaculty(chosenPlan.maxFaculty !== null ? String(chosenPlan.maxFaculty) : "");
-      setNewMaxCourses(chosenPlan.maxCourses !== null ? String(chosenPlan.maxCourses) : "");
-      setNewStorageLimitGB(chosenPlan.storageLimitGB !== null ? String(chosenPlan.storageLimitGB) : "");
-      setNewTrialDays(String(chosenPlan.trialDays));
-      setNewCertificateLimit(
-        chosenPlan.certificateLimit !== null && chosenPlan.certificateLimit !== undefined 
-          ? String(chosenPlan.certificateLimit) 
-          : ""
-      );
-    }
-  };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent, promoteConfirmed = false) => {
     e.preventDefault();
     if (
       !newName.trim() ||
-      !newCode.trim() ||
-      !newEmail.trim() ||
       !newAdminName.trim() ||
-      !newAdminEmail.trim() ||
-      !newTemporaryPassword.trim() ||
-      !newConfirmPassword.trim() ||
-      !newPlanId
+      !newAdminEmail.trim()
     ) {
       toast.error("Please fill in all required fields marked with *.");
       return;
     }
 
-    if (newTemporaryPassword !== newConfirmPassword) {
-      toast.error("Passwords do not match.");
-      return;
-    }
-
     try {
       setSubmittingCreate(true);
-      await api.post("/super-admin/institutes", {
+      const response = await api.post("/super-admin/institutes", {
         name: newName,
-        code: newCode,
-        email: newEmail,
-        phone: newPhone || null,
-        address: newAddress || null,
-        website: newWebsite || null,
-        logo: newLogo || null,
-        city: newCity || null,
-        state: newStateVal || null,
-        country: newCountry || null,
-        pincode: newPincode || null,
         adminName: newAdminName,
         adminEmail: newAdminEmail,
-        temporaryPassword: newTemporaryPassword,
-        planId: newPlanId,
-        maxStudents: enableCustomOverrides ? (newMaxStudents.trim() === "" ? null : parseInt(newMaxStudents, 10)) : undefined,
-        maxFaculty: enableCustomOverrides ? (newMaxFaculty.trim() === "" ? null : parseInt(newMaxFaculty, 10)) : undefined,
-        maxCourses: enableCustomOverrides ? (newMaxCourses.trim() === "" ? null : parseInt(newMaxCourses, 10)) : undefined,
-        storageLimitGB: enableCustomOverrides ? (newStorageLimitGB.trim() === "" ? null : parseFloat(newStorageLimitGB)) : undefined,
-        certificateLimit: enableCustomOverrides ? (newCertificateLimit.trim() === "" ? null : parseInt(newCertificateLimit, 10)) : undefined,
-        trialDays: enableCustomOverrides ? (newTrialDays.trim() === "" ? null : parseInt(newTrialDays, 10)) : undefined,
+        adminPhone: newPhone || null,
+        logo: newLogo || null,
+        promoteConfirmed,
       });
+
+      if (response.data && response.data.promotionRequired) {
+        const confirmMsg = `${response.data.message}\n\nDo you want to proceed and promote them?`;
+        if (window.confirm(confirmMsg)) {
+          // Re-submit with promoteConfirmed = true
+          setSubmittingCreate(false);
+          await handleCreate(e, true);
+        }
+        return;
+      }
 
       toast.success("Institute created successfully.");
       
       // Reset form states
       setNewName("");
-      setNewCode("");
-      setNewEmail("");
-      setNewPhone("");
-      setNewAddress("");
-      setNewWebsite("");
       setNewLogo("");
-      setNewCity("");
-      setNewStateVal("");
-      setNewCountry("");
-      setNewPincode("");
+      setNewPhone("");
       setNewAdminName("");
       setNewAdminEmail("");
-      setNewTemporaryPassword("");
-      setNewConfirmPassword("");
-      setNewPlanId("");
-      setEnableCustomOverrides(false);
       
       setIsCreateOpen(false);
       fetchInstitutes();
@@ -251,18 +182,37 @@ export default function InstitutesListPage() {
     }
   };
 
-  const handleEdit = async (e: React.FormEvent) => {
+  const handleEdit = async (e: React.FormEvent, promoteConfirmed = false) => {
     e.preventDefault();
-    if (!editName.trim()) {
-      toast.error("Institute name is required.");
+    if (
+      !editName.trim() ||
+      !editAdminName.trim() ||
+      !editAdminEmail.trim()
+    ) {
+      toast.error("Please fill in all required fields marked with *.");
       return;
     }
     try {
       setSubmittingEdit(true);
-      await api.patch(`/super-admin/institutes/${editId}`, {
+      const response = await api.patch(`/super-admin/institutes/${editId}`, {
         name: editName,
+        adminName: editAdminName,
+        adminEmail: editAdminEmail,
+        adminPhone: editAdminPhone || null,
         logo: editLogo || null,
+        promoteConfirmed,
       });
+
+      if (response.data && response.data.promotionRequired) {
+        const confirmMsg = `${response.data.message}\n\nDo you want to proceed and promote them?`;
+        if (window.confirm(confirmMsg)) {
+          // Re-submit with promoteConfirmed = true
+          setSubmittingEdit(false);
+          await handleEdit(e, true);
+        }
+        return;
+      }
+
       toast.success("Institute info updated!");
       setEditId(null);
       fetchInstitutes();
@@ -448,6 +398,9 @@ export default function InstitutesListPage() {
                                 setEditId(inst.id);
                                 setEditName(inst.name);
                                 setEditLogo(inst.logo || "");
+                                setEditAdminName(inst.adminName || "");
+                                setEditAdminEmail(inst.adminEmail || "");
+                                setEditAdminPhone(inst.adminPhone || "");
                               }}
                               className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-indigo-655 rounded-lg transition-colors cursor-pointer"
                               title="Edit Institute Settings"
@@ -515,7 +468,7 @@ export default function InstitutesListPage() {
           {/* Create Modal */}
           {isCreateOpen && (
             <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-slate-100 overflow-hidden my-8">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-slate-100 overflow-hidden my-8">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
                   <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                     <Building className="h-4.5 w-4.5 text-indigo-600" />
@@ -525,304 +478,70 @@ export default function InstitutesListPage() {
                     <X className="h-5 w-5" />
                   </button>
                 </div>
-                <form onSubmit={handleCreate} className="flex flex-col max-h-[85vh]">
+                <form onSubmit={(e) => handleCreate(e)} className="flex flex-col max-h-[85vh]">
                   {/* Scrollable inputs section */}
-                  <div className="p-6 space-y-6 overflow-y-auto flex-1 max-h-[60vh]">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      
-                      {/* SECTION 1 - Institute Information */}
-                      <div className="space-y-4 md:col-span-2">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b pb-1">SECTION 1 — Institute Information</h4>
-                      </div>
+                  <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">Institute Name *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. ABC Institute"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                      />
+                    </div>
 
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">Institute Name *</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. ABC Institute"
-                          value={newName}
-                          onChange={(e) => setNewName(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">Logo URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://example.com/logo.png"
+                        value={newLogo}
+                        onChange={(e) => setNewLogo(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                      />
+                    </div>
 
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">Institute Unique Code *</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. ABCINST"
-                          value={newCode}
-                          onChange={(e) => setNewCode(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Admin Name *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. John Doe"
+                        value={newAdminName}
+                        onChange={(e) => setNewAdminName(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                      />
+                    </div>
 
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">Email *</label>
-                        <input
-                          type="email"
-                          required
-                          placeholder="e.g. info@abcinstitute.com"
-                          value={newEmail}
-                          onChange={(e) => setNewEmail(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Admin Email *</label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. admin@abcinstitute.com"
+                        value={newAdminEmail}
+                        onChange={(e) => setNewAdminEmail(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                      />
+                    </div>
 
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">Phone Number</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. +91 9999999999"
-                          value={newPhone}
-                          onChange={(e) => setNewPhone(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">Website</label>
-                        <input
-                          type="url"
-                          placeholder="e.g. https://abcinstitute.com"
-                          value={newWebsite}
-                          onChange={(e) => setNewWebsite(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">Branding Logo URL</label>
-                        <input
-                          type="url"
-                          placeholder="https://example.com/logo.png"
-                          value={newLogo}
-                          onChange={(e) => setNewLogo(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">Address</label>
-                        <textarea
-                          rows={2}
-                          placeholder="e.g. Street Address, Area"
-                          value={newAddress}
-                          onChange={(e) => setNewAddress(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">City</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Mumbai"
-                          value={newCity}
-                          onChange={(e) => setNewCity(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">State</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Maharashtra"
-                          value={newStateVal}
-                          onChange={(e) => setNewStateVal(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Country</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. India"
-                          value={newCountry}
-                          onChange={(e) => setNewCountry(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Pincode</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 400001"
-                          value={newPincode}
-                          onChange={(e) => setNewPincode(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      {/* SECTION 2 - Default Admin User */}
-                      <div className="space-y-4 md:col-span-2 pt-2">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b pb-1">SECTION 2 — Institute Admin</h4>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Admin Name *</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. John Doe"
-                          value={newAdminName}
-                          onChange={(e) => setNewAdminName(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Admin Email *</label>
-                        <input
-                          type="email"
-                          required
-                          placeholder="e.g. admin@abcinstitute.com"
-                          value={newAdminEmail}
-                          onChange={(e) => setNewAdminEmail(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Admin Password *</label>
-                        <input
-                          type="password"
-                          required
-                          placeholder="Min 6 characters"
-                          value={newTemporaryPassword}
-                          onChange={(e) => setNewTemporaryPassword(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Confirm Password *</label>
-                        <input
-                          type="password"
-                          required
-                          placeholder="Verify your password"
-                          value={newConfirmPassword}
-                          onChange={(e) => setNewConfirmPassword(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        />
-                      </div>
-
-                      {/* SECTION 3 - Subscription Plan & Custom Limits */}
-                      <div className="space-y-4 md:col-span-2 pt-2">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b pb-1">SECTION 3 — Subscription & Limits</h4>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Select Plan *</label>
-                        <select
-                          required
-                          value={newPlanId}
-                          onChange={(e) => handleNewPlanChange(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
-                        >
-                          <option value="">-- Choose Subscription Plan --</option>
-                          {plans.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name} (₹{p.price}/mo)</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="flex items-center gap-2 md:col-span-2 pt-2">
-                        <input
-                          type="checkbox"
-                          id="enableCustomOverrides"
-                          checked={enableCustomOverrides}
-                          onChange={(e) => setEnableCustomOverrides(e.target.checked)}
-                          className="h-4 w-4 rounded-sm border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <label htmlFor="enableCustomOverrides" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                          Enable Custom Capacity Overrides
-                        </label>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Student Limit</label>
-                        <input
-                          type="number"
-                          placeholder="Standard Tier Default"
-                          disabled={!enableCustomOverrides}
-                          value={newMaxStudents}
-                          onChange={(e) => setNewMaxStudents(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700 font-mono"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Faculty Limit</label>
-                        <input
-                          type="number"
-                          placeholder="Standard Tier Default"
-                          disabled={!enableCustomOverrides}
-                          value={newMaxFaculty}
-                          onChange={(e) => setNewMaxFaculty(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700 font-mono"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Course Limit</label>
-                        <input
-                          type="number"
-                          placeholder="Standard Tier Default"
-                          disabled={!enableCustomOverrides}
-                          value={newMaxCourses}
-                          onChange={(e) => setNewMaxCourses(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700 font-mono"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Storage Limit (GB)</label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          placeholder="Standard Tier Default"
-                          disabled={!enableCustomOverrides}
-                          value={newStorageLimitGB}
-                          onChange={(e) => setNewStorageLimitGB(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700 font-mono"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Certificate Limit</label>
-                        <input
-                          type="number"
-                          placeholder="Standard Tier Default"
-                          disabled={!enableCustomOverrides}
-                          value={newCertificateLimit}
-                          onChange={(e) => setNewCertificateLimit(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700 font-mono"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Trial Period (Days)</label>
-                        <input
-                          type="number"
-                          placeholder="Standard Tier Default"
-                          disabled={!enableCustomOverrides}
-                          value={newTrialDays}
-                          onChange={(e) => setNewTrialDays(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700 font-mono"
-                        />
-                      </div>
-
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Admin Phone</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. +91 9999999999 (optional)"
+                        value={newPhone}
+                        onChange={(e) => setNewPhone(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                      />
                     </div>
                   </div>
 
                   {/* Footer Action Bar */}
-                  <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                  <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
                     <button
                       type="button"
                       onClick={() => setIsCreateOpen(false)}
@@ -833,7 +552,7 @@ export default function InstitutesListPage() {
                     <button
                       type="submit"
                       disabled={submittingCreate}
-                      className="inline-flex items-center gap-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-750 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-55 cursor-pointer shadow-sm"
+                      className="inline-flex items-center gap-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-755 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-55 cursor-pointer shadow-sm"
                     >
                       {submittingCreate && <Loader2 className="h-3 w-3 animate-spin" />}
                       Create
@@ -854,7 +573,7 @@ export default function InstitutesListPage() {
                     <X className="h-5 w-5" />
                   </button>
                 </div>
-                <form onSubmit={handleEdit} className="p-6 space-y-4">
+                <form onSubmit={(e) => handleEdit(e)} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">Institute Name *</label>
                     <input
@@ -874,18 +593,47 @@ export default function InstitutesListPage() {
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
                     />
                   </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Admin Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editAdminName}
+                      onChange={(e) => setEditAdminName(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Admin Email *</label>
+                    <input
+                      type="email"
+                      required
+                      value={editAdminEmail}
+                      onChange={(e) => setEditAdminEmail(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-wider mb-2">Admin Phone</label>
+                    <input
+                      type="text"
+                      value={editAdminPhone}
+                      onChange={(e) => setEditAdminPhone(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                    />
+                  </div>
                   <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                     <button
                       type="button"
                       onClick={() => setEditId(null)}
-                      className="px-4 py-2 border border-slate-200 text-slate-650 hover:bg-slate-50 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                      className="px-4 py-2 border border-slate-200 text-slate-650 hover:bg-slate-50 text-xs font-bold rounded-xl transition-colors cursor-pointer bg-white"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={submittingEdit}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-55 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-750 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-55 cursor-pointer"
                     >
                       {submittingEdit && <Loader2 className="h-3 w-3 animate-spin" />}
                       Save

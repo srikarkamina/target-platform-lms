@@ -111,6 +111,8 @@ export default function Sidebar() {
 
   if (role === "SUPER_ADMIN") {
     menuItems.push({ name: "SaaS Dashboard", href: "/dashboard/super-admin", icon: LayoutDashboard });
+    menuItems.push({ name: "Access Requests", href: "/dashboard/super-admin/access-requests", icon: ClipboardList });
+    menuItems.push({ name: "Demo Requests", href: "/dashboard/super-admin/demo-requests", icon: Calendar });
     menuItems.push({ name: "Institutes", href: "/dashboard/super-admin/institutes", icon: Building });
     menuItems.push({ name: "Subscriptions", href: "/dashboard/super-admin/subscriptions", icon: CreditCard });
     menuItems.push({ name: "System Health", href: "/dashboard/super-admin/system", icon: Activity });
